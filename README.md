@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# My Business
 
-## Getting Started
+Aplicación web moderna para gestión empresarial construida con Next.js 15 y TypeScript.
 
-First, run the development server:
+## 🚀 Stack Tecnológico
+
+- Next.js 15.3.1 + TypeScript 5
+- React Server Components + "use client"
+- Shadcn + Tailwind CSS
+
+
+## 📦 Inicio Rápido
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install   # Instalar dependencias
+pnpm dev       # Desarrollo - http://localhost:3000
+pnpm build     # Construir
+pnpm start     # Producción
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🏗️ Estructura
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Nombre-del-proyecto/
+|-app/  # App router y páginas
+|-components/ # UI, layout y theme
+|-convex/ # BackEnd BD y API
+|-core/ # Lógica de negocio 
+|-hooks/  # Custom hooks
+|-lib/    # Utilidades y stores
+|-public/   # Assets estáticos
+|-styles/   # Estilos globales
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
+## 📝 Convenciones
 
-To learn more about Next.js, take a look at the following resources:
+- TypeScript strict mode
+- React Server Components por defecto
+- Custom hooks para lógica reutilizable
+- Named exports > default exports
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+Desarrollado con Next.js y TypeScript
