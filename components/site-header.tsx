@@ -1,7 +1,8 @@
 "use client"
 
 import { SidebarIcon } from "lucide-react"
-
+import { useEffect } from "react"
+import { usePathname } from "next/navigation"
 import { SearchForm } from "@/components/search-form"
 import {
   Breadcrumb,
@@ -13,11 +14,22 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { useSidebar } from "@/components/ui/sidebar"
+//import { useSidebarStore } from "@/store/sidebarStore"
+import { useBreadcrumbStore } from "@/store/breadcrumbStore"
 import { ThemeToggle } from "./theme/theme-toggle"
+import { useSidebar } from "./ui/sidebar"
 
 export function SiteHeader() {
-  const { toggleSidebar } = useSidebar()
+  //const toggleSidebar = useSidebarStore(state => state.toggleSidebar)
+  const {toggleSidebar} = useSidebar()
+  const items = useBreadcrumbStore(state => state.items)
+  const setBreadcrumb = useBreadcrumbStore(state => state.setBreadcrumb)
+  const pathname = usePathname()
+
+  // Actualizar el breadcrumb cuando cambia la ruta
+  useEffect(() => {
+    setBreadcrumb(pathname)
+  }, [pathname, setBreadcrumb])
 
   return (
     <header className="bg-background sticky top-0 z-50 flex w-full items-center border-b">
@@ -33,18 +45,23 @@ export function SiteHeader() {
         <Separator orientation="vertical" className="mr-2 h-4" />
         <Breadcrumb className="hidden sm:block">
           <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="#">
-                Building Your Application
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Data Fetching</BreadcrumbPage>
-            </BreadcrumbItem>
+            {items.map((item, index) => (
+              <BreadcrumbItem key={index}>
+                {item.isCurrentPage ? (
+                  <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                ) : (
+                  <>
+                    <BreadcrumbLink href={item.href || '#'}>
+                      {item.label}
+                    </BreadcrumbLink>
+                    {index < items.length - 1 && <BreadcrumbSeparator />}
+                  </>
+                )}
+              </BreadcrumbItem>
+            ))}
           </BreadcrumbList>
         </Breadcrumb>
-        <div className="justify-end flex-1 hidden sm:flex">
+        <div className="justify-end flex-1 sm:flex ">
           <ThemeToggle />
         </div>
         <SearchForm className="w-full sm:ml-auto sm:w-auto" />

@@ -6,7 +6,7 @@ import { v } from "convex/values";
 export type Calificacion = {
   valor: number;
   estudiante_id: string;
-  descripcion: string;
+  descripcion: string; // No es opcional según el schema
 };
 
 // CREATE - Crear una nueva calificación
@@ -14,18 +14,19 @@ export const crearCalificacion = mutation({
   args: {
     valor: v.number(),
     estudiante_id: v.id("estudiantes"),
-    descripcion: v.string(),
-  },
+    descripcion: v.string(), // No es opcional según el schema
+  }, 
   handler: async (ctx, args) => {
     // Validar que la calificación esté entre 5 y 10
     if (args.valor < 5 || args.valor > 10) {
       throw new Error("La calificación debe estar entre 5 y 10");
     }
     
+    // El tipo descriptivo ahora coincide con los argumentos de la función
     const calificacionId = await ctx.db.insert("calificaciones", {
       valor: args.valor,
       estudiante_id: args.estudiante_id,
-      descripcion: args.descripcion,
+      descripcion: args.descripcion, // No necesita valor por defecto porque es obligatorio
     });
     return calificacionId;
   },
@@ -56,6 +57,7 @@ export const actualizarCalificacion = mutation({
     datos: v.object({
       valor: v.optional(v.number()),
       descripcion: v.optional(v.string()),
+      fecha: v.optional(v.string()), // Añadir fecha como opcional
     }),
   },
   handler: async (ctx, args) => {

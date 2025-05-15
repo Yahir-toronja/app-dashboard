@@ -115,13 +115,23 @@ export function TablaEstudiantesExpandible() {
   );
 }
 
-function CalificacionesEstudiante({ estudianteId }: { estudianteId: Id<"estudiantes"> }) {
-  const calificaciones = useQuery(api.calificaciones.obtenerCalificacionesPorEstudiante, { estudiante_id: estudianteId });
+import { useCalificaciones } from "@/hooks/use-calificaciones"; // Importar el nuevo hook
 
-  if (calificaciones === undefined) {
+function CalificacionesEstudiante({ estudianteId }: { estudianteId: Id<"estudiantes"> }) {
+  const { calificaciones, isLoading: cargando, error } = useCalificaciones(estudianteId);
+
+  if (cargando) {
     return (
       <div className="p-4 bg-muted/30 text-foreground">
         <p>Cargando calificaciones...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-muted/30 text-destructive">
+        <p>Error al cargar calificaciones: {error}</p>
       </div>
     );
   }
