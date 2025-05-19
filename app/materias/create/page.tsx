@@ -96,19 +96,7 @@ export default function CrearMateriaPage() {
                             />
                         </div>
 
-                        <div className="grid gap-2">
-                            <Label htmlFor="creditos">Créditos</Label>
-                            <Input
-                                id="creditos"
-                                name="creditos"
-                                type="number"
-                                disabled
-                                value={0}
-                                placeholder="4"
-                                min="1"
-                                max="10"
-                            />
-                        </div>
+
                     </CardContent>
 
                     <CardFooter className="flex flex-col sm:flex-row justify-between gap-4 mt-4">

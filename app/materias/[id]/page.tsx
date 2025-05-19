@@ -144,12 +144,7 @@ export default function DetalleMateriaPage({
             <div className="p-2 bg-muted rounded-md">{materia.nombre}</div>
           </div>
 
-          <div>
-            <h3 className="font-medium text-sm text-muted-foreground mb-1">
-              Créditos
-            </h3>
-            <div className="p-2 bg-muted rounded-md">N/A</div>
-          </div>
+
         </CardContent>
       </Card>
 

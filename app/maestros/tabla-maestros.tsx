@@ -10,12 +10,12 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { Card, CardContent } from "@/components/ui/card";
 import { Id } from "@/convex/_generated/dataModel";
 
-type Maestro = {
-  _id: Id<"maestros">;
-  n_empelado: string;
-  nombre: string;
-  correo: string;
-};
+// type Maestro = {
+//   _id: Id<"maestros">;
+//   n_empelado: string;
+//   nombre: string;
+//   correo: string;
+// };
 
 export function TablaMaestrosExpandible() {
   const router = useRouter();

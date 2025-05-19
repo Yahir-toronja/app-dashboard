@@ -80,7 +80,7 @@ export default function EditarMateriaPage({ params }: { params: Promise<{ id: st
     const { name, value } = e.target;
     setFormData((prev) => ({ 
       ...prev, 
-      [name]: name === "creditos" ? Number(value) : value 
+      [name]: value 
     }));
   };
   
@@ -140,19 +140,7 @@ export default function EditarMateriaPage({ params }: { params: Promise<{ id: st
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="creditos">Créditos</Label>
-              <Input
-                id="creditos"
-                name="creditos"
-                type="number"
-                disabled
-                value={0}
-                placeholder="4"
-                min="1"
-                max="10"
-              />
-            </div>
+
           </CardContent>
           
           <CardFooter className="flex justify-between">

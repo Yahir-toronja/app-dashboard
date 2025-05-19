@@ -13,8 +13,7 @@ import { Id } from "@/convex/_generated/dataModel";
 type Materia = {
   _id: Id<"materia">;
   nombre: string;
-  codigo: string;
-  creditos: number;
+  id_m: string;
 };
 
 export function TablaMateriaExpandible() {
@@ -58,13 +57,12 @@ export function TablaMateriaExpandible() {
             <TableHead className="w-[50px]"></TableHead>
             <TableHead className="w-[100px]">Código</TableHead>
             <TableHead>Nombre</TableHead>
-            <TableHead>Créditos</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {materias.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={4} className="text-center">
+              <TableCell colSpan={3} className="text-center">
                 No hay materias registradas
               </TableCell>
             </TableRow>
@@ -90,18 +88,15 @@ export function TablaMateriaExpandible() {
                     className="font-medium"
                     onClick={() => handleVerMateria(materia._id)}
                   >
-                    {materia.codigo}
+                    {materia.id_m}
                   </TableCell>
                   <TableCell onClick={() => handleVerMateria(materia._id)}>
                     {materia.nombre}
                   </TableCell>
-                  <TableCell onClick={() => handleVerMateria(materia._id)}>
-                    {materia.creditos}
-                  </TableCell>
                 </TableRow>
                 {expandedRows[materia._id] && (
                   <TableRow key={`expanded-${materia._id}`}>
-                    <TableCell colSpan={4} className="p-0">
+                    <TableCell colSpan={3} className="p-0">
                       <DetallesMateria materiaId={materia._id} />
                     </TableCell>
                   </TableRow>

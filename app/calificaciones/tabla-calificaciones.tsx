@@ -10,8 +10,10 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { Card, CardContent } from "@/components/ui/card";
 import { Id } from "@/convex/_generated/dataModel";
 
+// Definimos el tipo Calificacion para tener más claridad
 type Calificacion = {
   _id: Id<"calificaciones">;
+  _creationTime: number;
   nota: number;
   estudianteId: Id<"estudiantes">;
   materiaId: Id<"materia">;
@@ -20,7 +22,7 @@ type Calificacion = {
 
 export function TablaCalificacionesExpandible() {
   const router = useRouter();
-  const calificaciones = useQuery(api.calificaciones.obtenerCalificaciones);
+  const calificaciones = useQuery(api.calificaciones.obtenerCalificaciones) as Calificacion[] | undefined;
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
   if (calificaciones === undefined) {
@@ -123,12 +125,24 @@ export function TablaCalificacionesExpandible() {
 }
 
 function DetallesCalificacion({ calificacionId }: { calificacionId: Id<"calificaciones"> }) {
-  const calificacion = useQuery(api.calificaciones.obtenerCalificacionPorId, { id: calificacionId });
+  // Usamos useQuery para obtener la calificación específica
+  const calificaciones = useQuery(api.calificaciones.obtenerCalificaciones) as Calificacion[] | undefined;
+  
+  if (!calificaciones) {
+    return (
+      <div className="p-4 bg-muted/30 text-foreground">
+        <p>Cargando detalles...</p>
+      </div>
+    );
+  }
+
+  // Encontramos la calificación específica
+  const calificacion = calificaciones.find(c => c._id === calificacionId);
   
   if (!calificacion) {
     return (
       <div className="p-4 bg-muted/30 text-foreground">
-        <p>Cargando detalles...</p>
+        <p>No se encontró la calificación</p>
       </div>
     );
   }
