@@ -33,7 +33,7 @@ export const obtenerMaestros = query({
   },
 });
 
-// READ - Obtener un maestro por ID
+// READ - Obtener un maestro por numero de empleado
 export const obtenerMaestroPorN = query({
   args: { n_empelado: v.string() },
   handler: async (ctx, args) => {
@@ -44,7 +44,13 @@ export const obtenerMaestroPorN = query({
     },
 });
 
-
+// READ - Buscar maestros por ID
+export const obtenerMaestroPorId = query({
+  args: { id: v.id("maestros") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});
 
 // UPDATE - Actualizar un maestro
 export const actualizarMaestro = mutation({

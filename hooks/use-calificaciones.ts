@@ -9,10 +9,10 @@ import { toast } from "sonner";
 export interface Calificacion {
   _id: Id<"calificaciones">;
   _creationTime: number;
-  estudiante_id: Id<"estudiantes">;
-  valor: number;
-  descripcion: string; // No es opcional según el schema
-  fecha?: string; // Este campo no está en el schema pero lo mantenemos para compatibilidad
+  estudianteId: Id<"estudiantes">;
+  materiaId: Id<"materia">;
+  nota: number;
+  semestre: string;
 }
 
 export const useCalificaciones = (estudianteId: Id<"estudiantes"> | "skip") => {
@@ -52,7 +52,7 @@ export const useCalificaciones = (estudianteId: Id<"estudiantes"> | "skip") => {
   // Memoizar las calificaciones para evitar re-renders innecesarios
   const memoizedCalificaciones = useMemo(() => calificaciones, [calificaciones]);
 
-  const agregarCalificacion = async (datos: { valor: number; descripcion: string; fecha?: string }) => {
+  const agregarCalificacion = async (datos: { nota: number; materiaId: Id<"materia">; semestre: string }) => {
     if (estudianteId === "skip") {
       toast.error("ID de estudiante no válido para agregar calificación.");
       return;
@@ -60,9 +60,10 @@ export const useCalificaciones = (estudianteId: Id<"estudiantes"> | "skip") => {
     setIsLoading(true);
     try {
       await crearCalificacion({
-        estudiante_id: estudianteId,
-        valor: datos.valor,
-        descripcion: datos.descripcion, // Ahora es obligatorio
+        estudianteId: estudianteId,
+        materiaId: datos.materiaId,
+        nota: datos.nota,
+        semestre: datos.semestre
       });
       toast.success("Calificación agregada con éxito");
       await cargarCalificaciones(); // Recargar calificaciones
@@ -75,16 +76,15 @@ export const useCalificaciones = (estudianteId: Id<"estudiantes"> | "skip") => {
     }
   };
 
-  const modificarCalificacion = async (idCalificacion: Id<"calificaciones">, datos: { valor?: number; descripcion?: string; fecha?: string }) => {
+  const modificarCalificacion = async (idCalificacion: Id<"calificaciones">, datos: { nota?: number; materiaId?: Id<"materia">; semestre?: string }) => {
     setIsLoading(true);
     try {
-      // Aquí está la corrección, ahora los parámetros están estructurados correctamente
       await actualizarCalificacion({
         id: idCalificacion,
-        datos: { // Envolvemos los datos en un objeto 'datos'
-          valor: datos.valor,
-          descripcion: datos.descripcion,
-          fecha: datos.fecha,
+        datos: {
+          nota: datos.nota,
+          materiaId: datos.materiaId,
+          semestre: datos.semestre
         }
       });
       toast.success("Calificación actualizada con éxito");

@@ -12,13 +12,13 @@ export const estudiantes = defineTable(
 );
 
 // define la tabla de calificaciones con relación a estudiantes
-export const calificaciones = defineTable(
-    v.object({
-        valor: v.number(),
-        estudiante_id: v.id("estudiantes"),
-        descripcion: v.string(),
-    })
-);
+export const calificaciones = defineTable({
+    estudianteId: v.id("estudiantes"), // Referencia al ID del estudiante
+    materiaId: v.id("materia"),       // Referencia al ID de la materia
+    nota: v.number(),                  // La calificación (valor numérico)
+    semestre: v.string(),              // Semestre (ej: "2025-1")
+  })
+
 
 export const maestros = defineTable(
     v.object({
@@ -50,6 +50,16 @@ export const horario = defineTable(
     })
 );
 
+export const usuarios = defineTable(
+    v.object({
+        id_clerk: v.string(),
+        nombre: v.string(),
+        email: v.string(),
+        rol: v.string(),
+        password: v.string(),
+    })
+);
+
 export default defineSchema({
     estudiantes,
     maestros,
@@ -57,4 +67,5 @@ export default defineSchema({
     salones,
     horario,
     calificaciones,
+    usuarios,
 })

@@ -19,6 +19,7 @@ import type * as horario from "../horario.js";
 import type * as maestros from "../maestros.js";
 import type * as materia from "../materia.js";
 import type * as salon from "../salon.js";
+import type * as usuarios from "../usuarios.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   maestros: typeof maestros;
   materia: typeof materia;
   salon: typeof salon;
+  usuarios: typeof usuarios;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

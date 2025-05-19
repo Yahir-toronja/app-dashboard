@@ -4,29 +4,31 @@ import { v } from "convex/values";
 
 // Tipos para calificaciones
 export type Calificacion = {
-  valor: number;
-  estudiante_id: string;
-  descripcion: string; // No es opcional según el schema
+  nota: number;
+  estudianteId: string;
+  materiaId: string;
+  semestre: string;
 };
 
 // CREATE - Crear una nueva calificación
 export const crearCalificacion = mutation({
   args: {
-    valor: v.number(),
-    estudiante_id: v.id("estudiantes"),
-    descripcion: v.string(), // No es opcional según el schema
+    nota: v.number(),
+    estudianteId: v.id("estudiantes"),
+    materiaId: v.id("materia"),
+    semestre: v.string(),
   }, 
   handler: async (ctx, args) => {
     // Validar que la calificación esté entre 5 y 10
-    if (args.valor < 5 || args.valor > 10) {
+    if (args.nota < 5 || args.nota > 10) {
       throw new Error("La calificación debe estar entre 5 y 10");
     }
     
-    // El tipo descriptivo ahora coincide con los argumentos de la función
     const calificacionId = await ctx.db.insert("calificaciones", {
-      valor: args.valor,
-      estudiante_id: args.estudiante_id,
-      descripcion: args.descripcion, // No necesita valor por defecto porque es obligatorio
+      nota: args.nota,
+      estudianteId: args.estudianteId,
+      materiaId: args.materiaId,
+      semestre: args.semestre,
     });
     return calificacionId;
   },
@@ -45,7 +47,7 @@ export const obtenerCalificacionesPorEstudiante = query({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("calificaciones")
-      .filter((q) => q.eq(q.field("estudiante_id"), args.estudiante_id))
+      .filter((q) => q.eq(q.field("estudianteId"), args.estudiante_id))
       .collect();
   },
 });
@@ -55,16 +57,16 @@ export const actualizarCalificacion = mutation({
   args: {
     id: v.id("calificaciones"),
     datos: v.object({
-      valor: v.optional(v.number()),
-      descripcion: v.optional(v.string()),
-      fecha: v.optional(v.string()), // Añadir fecha como opcional
+      nota: v.optional(v.number()),
+      materiaId: v.optional(v.id("materia")),
+      semestre: v.optional(v.string()),
     }),
   },
   handler: async (ctx, args) => {
     const { id, datos } = args;
     
     // Validar que la calificación esté entre 5 y 10 si se está actualizando
-    if (datos.valor !== undefined && (datos.valor < 5 || datos.valor > 10)) {
+    if (datos.nota !== undefined && (datos.nota < 5 || datos.nota > 10)) {
       throw new Error("La calificación debe estar entre 5 y 10");
     }
     

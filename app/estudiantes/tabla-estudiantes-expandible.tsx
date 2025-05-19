@@ -146,11 +146,21 @@ function CalificacionesEstudiante({ estudianteId }: { estudianteId: Id<"estudian
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {calificaciones.map((calificacion) => (
               <div key={calificacion._id} className="bg-card p-3 rounded-md shadow-sm border border-border">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">{calificacion.descripcion}</span>
-                  <span className={`text-sm font-bold ${calificacion.valor >= 7 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {calificacion.valor}
-                  </span>
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Materia ID:</span>
+                    <span className="text-sm">{calificacion.materiaId}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Semestre:</span>
+                    <span className="text-sm">{calificacion.semestre}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Nota:</span>
+                    <span className={`text-sm font-bold ${calificacion.nota >= 7 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {calificacion.nota}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
