@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,8 +30,8 @@ export default function CrearCalificacionPage() {
     const materias = useQuery(api.materia.obtenerMaterias) || [];
 
     const [formData, setFormData] = useState({
-        estudianteId: "",
-        materiaId: "",
+        estudianteId: "" as unknown as Id<"estudiantes">,
+        materiaId: "" as unknown as Id<"materia">,
         nota: 0,
         semestre: "",
     });
@@ -92,11 +93,11 @@ export default function CrearCalificacionPage() {
 
                     <CardContent className="grid grid-cols-1 gap-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="estudiante">Nombre del Estudiante</Label>
+                            <Label htmlFor="estudianteId">Nombre del Estudiante</Label>
                             <Input
-                                id="estudiante"
-                                name="estudiante"
-                                value={formData.estudiante}
+                                id="estudianteId"
+                                name="estudianteId"
+                                value={formData.estudianteId as string}
                                 onChange={handleChange}
                                 placeholder="Nombre completo del estudiante"
                                 required
@@ -104,10 +105,10 @@ export default function CrearCalificacionPage() {
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="materia">Materia</Label>
+                            <Label htmlFor="materiaId">Materia</Label>
                             <Select
-                                value={formData.materia}
-                                onValueChange={(value) => handleSelectChange("materia", value)}
+                                value={formData.materiaId as string}
+                                onValueChange={(value) => handleSelectChange("materiaId", value)}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Selecciona una materia" />

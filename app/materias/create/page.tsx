@@ -73,11 +73,11 @@ export default function CrearMateriaPage() {
 
                     <CardContent className="grid grid-cols-1 gap-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="codigo">Código de la Materia</Label>
+                            <Label htmlFor="id_m">Código de la Materia</Label>
                             <Input
-                                id="codigo"
-                                name="codigo"
-                                value={formData.codigo}
+                                id="id_m"
+                                name="id_m"
+                                value={formData.id_m}
                                 onChange={handleChange}
                                 placeholder="Ej: MAT101"
                                 required
@@ -102,12 +102,11 @@ export default function CrearMateriaPage() {
                                 id="creditos"
                                 name="creditos"
                                 type="number"
-                                value={formData.creditos}
-                                onChange={handleChange}
+                                disabled
+                                value={0}
                                 placeholder="4"
                                 min="1"
                                 max="10"
-                                required
                             />
                         </div>
                     </CardContent>

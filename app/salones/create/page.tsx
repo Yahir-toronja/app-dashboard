@@ -21,8 +21,9 @@ export default function CrearSalonPage() {
     const crearSalon = useMutation(api.salon.crearSalon);
 
     const [formData, setFormData] = useState({
-        numero: "",
+        numero: 0,
         edificio: "",
+        planta: "",
         capacidad: 0,
     });
 
@@ -32,7 +33,7 @@ export default function CrearSalonPage() {
         const { name, value } = e.target;
         setFormData((prev) => ({ 
             ...prev, 
-            [name]: name === "capacidad" ? Number(value) : value 
+            [name]: name === "numero" || name === "capacidad" ? Number(value) : value 
         }));
     };
 
@@ -42,9 +43,9 @@ export default function CrearSalonPage() {
 
         try {
             await crearSalon({
-                numero: formData.numero,
+                numero: Number(formData.numero),
                 edificio: formData.edificio,
-                capacidad: formData.capacidad
+                planta: formData.planta
             });
             router.push("/salones");
         } catch (error) {
@@ -79,9 +80,11 @@ export default function CrearSalonPage() {
                             <Input
                                 id="numero"
                                 name="numero"
+                                type="number"
                                 value={formData.numero}
                                 onChange={handleChange}
-                                placeholder="Ej: 101"
+                                placeholder="101"
+                                min="1"
                                 required
                             />
                         </div>
@@ -94,6 +97,18 @@ export default function CrearSalonPage() {
                                 value={formData.edificio}
                                 onChange={handleChange}
                                 placeholder="Nombre del edificio"
+                                required
+                            />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="planta">Planta</Label>
+                            <Input
+                                id="planta"
+                                name="planta"
+                                value={formData.planta}
+                                onChange={handleChange}
+                                placeholder="Ej: Planta Baja, 1er Piso"
                                 required
                             />
                         </div>
