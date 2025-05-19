@@ -36,7 +36,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
   const pathname = usePathname()
   const expandedSections = useSidebarStore(state => state.expandedSections)
   const setSectionOpen = useSidebarStore(state => state.setSectionOpen)
-  const toggleSection = useSidebarStore(state => state.toggleSection)
+  //const toggleSection = useSidebarStore(state => state.toggleSection)
 
   // Actualizar el estado del sidebar cuando cambia la ruta
   useEffect(() => {
