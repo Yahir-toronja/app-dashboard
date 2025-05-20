@@ -10,11 +10,6 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { Card, CardContent } from "@/components/ui/card";
 import { Id } from "@/convex/_generated/dataModel";
 
-type Materia = {
-  _id: Id<"materia">;
-  nombre: string;
-  id_m: string;
-};
 
 export function TablaMateriaExpandible() {
   const router = useRouter();
@@ -110,7 +105,7 @@ export function TablaMateriaExpandible() {
   );
 }
 
-function DetallesMateria({ materiaId }: { materiaId: Id<"materia"> }) {
+function DetallesMateria({}: { materiaId: Id<"materia"> }) {
   return (
     <Card className="m-2 border-0 shadow-none bg-muted/30">
       <CardContent className="p-4 text-foreground">

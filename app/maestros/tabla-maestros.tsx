@@ -115,7 +115,7 @@ export function TablaMaestrosExpandible() {
   );
 }
 
-function DetallesMaestro({ maestroId }: { maestroId: Id<"maestros"> }) {
+function DetallesMaestro({}: { maestroId: Id<"maestros"> }) {
   return (
     <Card className="m-2 border-0 shadow-none bg-muted/30">
       <CardContent className="p-4 text-foreground">
