@@ -12,8 +12,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { ArrowLeft, Save } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function EditarMaestroPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function EditarMaestroPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const router = useRouter();
   const maestro = useQuery(api.maestros.obtenerMaestroPorId, { id: id as Id<"maestros"> });
   const actualizarMaestro = useMutation(api.maestros.actualizarMaestro);
@@ -164,7 +164,7 @@ export default function EditarMaestroPage({ params }: { params: Promise<{ id: st
             <Button 
               type="submit" 
               disabled={isSubmitting}
-              className="flex items-center gap-2 mt-8"
+              className="flex items-center gap-2"
             >
               <Save className="h-4 w-4" />
               {isSubmitting ? "Guardando..." : "Guardar Cambios"}
