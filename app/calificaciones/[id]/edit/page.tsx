@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
+
+// Configuración de la página para Next.js 15
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'default-no-store';
+export const revalidate = 0;
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -12,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
-export default function EditarCalificacion({ params }: any) {
+export default function EditarCalificacion({ params }: { params: { id: string } }) {
   const router = useRouter();
   const id = params.id as Id<"calificaciones">;
   
@@ -53,7 +58,7 @@ export default function EditarCalificacion({ params }: any) {
     
     try {
       await actualizarCalificacion({
-        id,
+        id: id,
         datos: {
           materiaId: formData.materia_id as Id<"materia">,
           nota: parseFloat(formData.calificacion),
@@ -65,8 +70,8 @@ export default function EditarCalificacion({ params }: any) {
       toast.success("La calificación ha sido actualizada exitosamente.");
       
       router.push("/calificaciones");
-    } catch (_error) {
-      console.error("Error al actualizar la calificación:", _error);
+    } catch (error: unknown) {
+      console.error("Error al actualizar la calificación:", error);
       toast.error("Ocurrió un error al actualizar la calificación.");
     }
   };
