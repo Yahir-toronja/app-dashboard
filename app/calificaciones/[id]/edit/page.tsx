@@ -66,6 +66,7 @@ export default function EditarCalificacion({ params }: { params: { id: string } 
       
       router.push("/calificaciones");
     } catch (_error) {
+      console.error("Error al actualizar la calificación:", _error);
       toast.error("Ocurrió un error al actualizar la calificación.");
     }
   };
