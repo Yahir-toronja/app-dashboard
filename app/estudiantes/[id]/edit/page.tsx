@@ -1,42 +1,54 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui//button";
-import { Input } from "@/components/ui//input";
-import { Label } from "@/components/ui//label";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui//card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { ArrowLeft, Save } from "lucide-react";
-import { Skeleton } from "@/components/ui//skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default function EditarEstudiantePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const idEstudiante = id as Id<"estudiantes">;
+export default function EditarEstudiantePage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const router = useRouter();
-  const estudiante = useQuery(api.estudiantes.obtenerEstudiantePorId, { id: idEstudiante });
-  const actualizarEstudiante = useMutation(api.estudiantes.actualizarEstudiante);
-  
+  // Buscar estudiante por matrícula
+  const estudiantes = useQuery(api.estudiantes.buscarEstudiantesPorMatricula, { matricula: id });
+
+// Tomar el primero
+const estudiante = estudiantes?.[0];
+
+
+  const actualizarEstudiante = useMutation(
+    api.estudiantes.actualizarEstudiante
+  );
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     matricula: "",
     nombre: "",
-    correo: ""
+    correo: "",
   });
-  
+
   // Cargar datos del estudiante cuando estén disponibles
   useEffect(() => {
     if (estudiante) {
       setFormData({
         matricula: estudiante.matricula,
         nombre: estudiante.nombre,
-        correo: estudiante.correo
+        correo: estudiante.correo,
       });
     }
   }, [estudiante]);
-  
+
   if (estudiante === undefined) {
     return (
       <div className="container mx-auto py-10">
@@ -73,25 +85,30 @@ export default function EditarEstudiantePage({ params }: { params: Promise<{ id:
           </Button>
           <h1 className="text-3xl font-bold">Estudiante no encontrado</h1>
         </div>
-        <p>No se pudo encontrar el estudiante con el ID proporcionado.</p>
+        <p>No se pudo encontrar el estudiante con la matrícula: {id}</p>
       </div>
     );
   }
-  
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       await actualizarEstudiante({
         id: estudiante._id,
-        datos: formData,
+        datos: {
+          matricula: formData.matricula,
+          nombre: formData.nombre,
+          correo: formData.correo
+        }
       });
+
       router.push(`/estudiantes/${id}`);
     } catch (error) {
       console.error("Error al actualizar estudiante:", error);
@@ -99,7 +116,7 @@ export default function EditarEstudiantePage({ params }: { params: Promise<{ id:
       setIsSubmitting(false);
     }
   };
-  
+
   return (
     <div className="container mx-auto py-10">
       <div className="flex items-center gap-2 mb-6">
@@ -108,11 +125,13 @@ export default function EditarEstudiantePage({ params }: { params: Promise<{ id:
         </Button>
         <h1 className="text-3xl font-bold">Editar Estudiante</h1>
       </div>
-      
+
       <Card className="max-w-2xl mx-auto">
         <form onSubmit={handleSubmit}>
           <CardHeader>
-            <CardTitle className="font-semibold text-center">Modificar información de {estudiante.nombre}</CardTitle>
+            <CardTitle className="font-semibold text-center">
+              Modificar información de {estudiante.nombre}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
@@ -126,7 +145,7 @@ export default function EditarEstudiantePage({ params }: { params: Promise<{ id:
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="nombre">Nombre Completo</Label>
               <Input
@@ -138,7 +157,7 @@ export default function EditarEstudiantePage({ params }: { params: Promise<{ id:
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="correo">Correo Electrónico</Label>
               <Input
@@ -152,18 +171,18 @@ export default function EditarEstudiantePage({ params }: { params: Promise<{ id:
               />
             </div>
           </CardContent>
-          
+
           <CardFooter className="flex justify-between">
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => router.back()}
               disabled={isSubmitting}
             >
               Cancelar
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isSubmitting}
               className="flex items-center gap-2 mt-8"
             >

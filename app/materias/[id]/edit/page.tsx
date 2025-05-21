@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -12,8 +12,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { ArrowLeft, Save } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function EditarMateriaPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function EditarMateriaPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const materiaId = id as Id<"materia">;
   const router = useRouter();
   const materia = useQuery(api.materia.obtenerMateriaPorId, { id: materiaId });

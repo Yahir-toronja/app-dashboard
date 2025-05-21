@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Pencil, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+
 import {
   Card,
   CardContent,
@@ -30,9 +31,9 @@ import { Separator } from "@/components/ui/separator";
 export default function DetalleEstudiantePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id } = use(params);
+  const { id } = params;
   const idEstudiante = id as Id<"estudiantes">;
   const router = useRouter();
   const estudiantes = useQuery(api.estudiantes.buscarEstudiantesPorMatricula, {
