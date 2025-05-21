@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
-export default function EditarCalificacion({ params }: { params: { id: string } } as any) {
+export default function EditarCalificacion({ params }: any) {
   const router = useRouter();
   const id = params.id as Id<"calificaciones">;
   
