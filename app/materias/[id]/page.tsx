@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,14 +24,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-export default function DetalleMateriaPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const { id } = params;
+export default function DetalleMateriaPage() {
+  const params = useParams();
+  const id = params?.id as string;
   const materiaId = id as Id<"materia">;
   const router = useRouter();
+
   const materia = useQuery(api.materia.obtenerMateriaPorId, {
     id: materiaId,
   });
@@ -142,8 +140,6 @@ export default function DetalleMateriaPage({
             </h3>
             <div className="p-2 bg-muted rounded-md">{materia.nombre}</div>
           </div>
-
-
         </CardContent>
       </Card>
 

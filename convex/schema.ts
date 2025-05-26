@@ -50,15 +50,17 @@ export const horario = defineTable(
     })
 );
 
-export const usuarios = defineTable(
-    v.object({
-        id_clerk: v.string(),
-        nombre: v.string(),
-        email: v.string(),
-        rol: v.string(),
-        password: v.string(),
-    })
-);
+export const usuarios = defineTable({
+    clerkId: v.string(), // ID de usuario de Clerk
+    nombre: v.string(),
+    correo: v.string(),
+    estado: v.union(v.literal("activo"), v.literal("bloqueado")), // Estado del usuario
+    fechaCreacion: v.number(), // Timestamp de creación
+    rol: v.string(), // Nuevo campo para el rol del usuario (ej: "admin", "user", etc.)
+})
+    .index("by_clerkId", ["clerkId"]) // Índice para buscar por Clerk ID
+    .index("by_correo", ["correo"]); 
+
 
 export default defineSchema({
     estudiantes,

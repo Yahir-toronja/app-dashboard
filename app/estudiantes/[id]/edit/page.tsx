@@ -16,9 +16,10 @@ import {
 } from "@/components/ui/card";
 import { ArrowLeft, Save } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { use } from "react";
 
-export default function EditarEstudiantePage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function EditarEstudiantePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   // Buscar estudiante por matrícula
   const estudiantes = useQuery(api.estudiantes.buscarEstudiantesPorMatricula, { matricula: id });

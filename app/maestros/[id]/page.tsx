@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -24,25 +24,40 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+// Interfaz para manejar params asíncronos en Next.js 15
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
 
-export default function DetalleMaestroPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const { id } = params;
+export default function DetalleMaestroPage({ params }: PageProps) {
   const router = useRouter();
+  const [id, setId] = useState<string>("");
+  const [isParamsLoaded, setIsParamsLoaded] = useState(false);
+  
+  // Resolver los params asíncronos
+  useEffect(() => {
+    const resolveParams = async () => {
+      const resolvedParams = await params;
+      setId(resolvedParams.id);
+      setIsParamsLoaded(true);
+    };
+    
+    resolveParams();
+  }, [params]);
+
   const idMaestro = id as Id<"maestros">;
-  const maestros = useQuery(api.maestros.obtenerMaestroPorN , {
-    n_empelado: idMaestro,
-  });
+  const maestros = useQuery(
+    api.maestros.obtenerMaestroPorN,
+    isParamsLoaded ? { n_empelado: idMaestro } : "skip"
+  );
   const maestro = maestros && maestros.length > 0 ? maestros[0] : null;
   const eliminarMaestro = useMutation(api.maestros.eliminarMaestro);
 
   const [modalEliminar, setModalEliminar] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (maestros === undefined) {
+  // Mostrar skeleton mientras se cargan los params o los datos
+  if (!isParamsLoaded || maestros === undefined) {
     return (
       <div className="container mx-auto py-10">
         <div className="flex items-center gap-2 mb-6">

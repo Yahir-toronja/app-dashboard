@@ -92,7 +92,7 @@ export function TablaMateriaExpandible() {
                 {expandedRows[materia._id] && (
                   <TableRow key={`expanded-${materia._id}`}>
                     <TableCell colSpan={3} className="p-0">
-                      <DetallesMateria materiaId={materia._id} />
+                      <DetallesMateria />
                     </TableCell>
                   </TableRow>
                 )}
@@ -105,7 +105,8 @@ export function TablaMateriaExpandible() {
   );
 }
 
-function DetallesMateria({}: { materiaId: Id<"materia"> }) {
+// Removed unused materiaId parameter
+function DetallesMateria() {
   return (
     <Card className="m-2 border-0 shadow-none bg-muted/30">
       <CardContent className="p-4 text-foreground">
@@ -122,5 +123,53 @@ function DetallesMateria({}: { materiaId: Id<"materia"> }) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// Fixed the any type with a proper interface
+interface Materia {
+  _id: Id<"materia">;
+  id_m: string;
+  nombre: string;
+}
+
+// Add a simpler table component as default export
+export default function TablaMaterias({ materias }: { materias: Materia[] }) {
+  const router = useRouter();
+
+  const handleVerMateria = (id: Id<"materia">) => {
+    router.push(`/materias/${id}`);
+  };
+
+  return (
+    <Table>
+      <TableCaption>Lista de materias registradas</TableCaption>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[100px]">Código</TableHead>
+          <TableHead>Nombre</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {materias.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={2} className="text-center">
+              No hay materias registradas
+            </TableCell>
+          </TableRow>
+        ) : (
+          materias.map((materia) => (
+            <TableRow 
+              key={materia._id}
+              className="cursor-pointer hover:bg-muted/50"
+              onClick={() => handleVerMateria(materia._id)}
+            >
+              <TableCell className="font-medium">{materia.id_m}</TableCell>
+              <TableCell>{materia.nombre}</TableCell>
+            </TableRow>
+          ))
+        )}
+      </TableBody>
+    </Table>
   );
 }

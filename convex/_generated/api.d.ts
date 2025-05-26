@@ -15,6 +15,7 @@ import type {
 } from "convex/server";
 import type * as calificaciones from "../calificaciones.js";
 import type * as estudiantes from "../estudiantes.js";
+import type * as functions_user from "../functions/user.js";
 import type * as horario from "../horario.js";
 import type * as maestros from "../maestros.js";
 import type * as materia from "../materia.js";
@@ -32,6 +33,7 @@ import type * as usuarios from "../usuarios.js";
 declare const fullApi: ApiFromModules<{
   calificaciones: typeof calificaciones;
   estudiantes: typeof estudiantes;
+  "functions/user": typeof functions_user;
   horario: typeof horario;
   maestros: typeof maestros;
   materia: typeof materia;

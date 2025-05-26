@@ -18,10 +18,11 @@ import { Separator } from "@/components/ui/separator"
 import { useBreadcrumbStore } from "@/store/breadcrumbStore"
 import { ThemeToggle } from "./theme/theme-toggle"
 import { useSidebar } from "./ui/sidebar"
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs"
 
 export function SiteHeader() {
   //const toggleSidebar = useSidebarStore(state => state.toggleSidebar)
-  const {toggleSidebar} = useSidebar()
+  const { toggleSidebar } = useSidebar()
   const items = useBreadcrumbStore(state => state.items)
   const setBreadcrumb = useBreadcrumbStore(state => state.setBreadcrumb)
   const pathname = usePathname()
@@ -42,6 +43,7 @@ export function SiteHeader() {
         >
           <SidebarIcon />
         </Button>
+        
         <Separator orientation="vertical" className="mr-2 h-4" />
         <Breadcrumb className="hidden sm:block">
           <BreadcrumbList>
@@ -65,6 +67,17 @@ export function SiteHeader() {
           <ThemeToggle />
         </div>
         <SearchForm className="w-full sm:ml-auto sm:w-auto" />
+        <SignedOut>
+          <SignInButton>
+            <Button>Sign in</Button>
+          </SignInButton>
+          <SignUpButton>
+            <Button variant="secondary">Sign up</Button>
+          </SignUpButton>
+        </SignedOut>
+        <SignedIn>
+          <UserButton />
+        </SignedIn>
       </div>
     </header>
   )

@@ -12,10 +12,31 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { ArrowLeft, Save } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function EditarMaestroPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+// Actualizar la interfaz para manejar params asíncronos en Next.js 15
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function EditarMaestroPage({ params }: PageProps) {
   const router = useRouter();
-  const maestro = useQuery(api.maestros.obtenerMaestroPorId, { id: id as Id<"maestros"> });
+  const [id, setId] = useState<string>("");
+  const [isParamsLoaded, setIsParamsLoaded] = useState(false);
+  
+  // Resolver los params asíncronos
+  useEffect(() => {
+    const resolveParams = async () => {
+      const resolvedParams = await params;
+      setId(resolvedParams.id);
+      setIsParamsLoaded(true);
+    };
+    
+    resolveParams();
+  }, [params]);
+  
+  const maestro = useQuery(
+    api.maestros.obtenerMaestroPorId, 
+    isParamsLoaded ? { id: id as Id<"maestros"> } : "skip"
+  );
   const actualizarMaestro = useMutation(api.maestros.actualizarMaestro);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,14 +50,15 @@ export default function EditarMaestroPage({ params }: { params: { id: string } }
   useEffect(() => {
     if (maestro) {
       setFormData({
-        n_empleado: maestro.n_empelado,
+        n_empleado: maestro.n_empelado, // Nota: hay un typo aquí "n_empelado" vs "n_empleado"
         nombre: maestro.nombre,
         correo: maestro.correo
       });
     }
   }, [maestro]);
   
-  if (maestro === undefined) {
+  // Mostrar skeleton mientras se cargan los params o los datos
+  if (!isParamsLoaded || maestro === undefined) {
     return (
       <div className="container mx-auto py-10">
         <div className="flex items-center gap-2 mb-6">

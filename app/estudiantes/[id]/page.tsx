@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -28,17 +28,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
-export default function DetalleEstudiantePage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const { id } = params;
-  const idEstudiante = id as Id<"estudiantes">;
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function DetalleEstudiantePage({ params }: PageProps) {
   const router = useRouter();
-  const estudiantes = useQuery(api.estudiantes.buscarEstudiantesPorMatricula, {
-    matricula: idEstudiante,
-  });
+  const [id, setId] = useState<string | null>(null);
+
+  // Resolver los params asíncronos
+  useEffect(() => {
+    params.then((resolvedParams) => {
+      setId(resolvedParams.id);
+    });
+  }, [params]);
+
+  const estudiantes = useQuery(
+    api.estudiantes.buscarEstudiantesPorMatricula,
+    id ? { matricula: id } : "skip"
+  );
+
   const estudiante =
     estudiantes && estudiantes.length > 0 ? estudiantes[0] : null;
   const eliminarEstudiante = useMutation(api.estudiantes.eliminarEstudiante);
@@ -56,6 +65,34 @@ export default function DetalleEstudiantePage({
     materiaId: "", // ID de la materia
     semestre: "", // Semestre (ej: "2025-1")
   });
+
+  // Mostrar loading mientras resolvemos params
+  if (!id) {
+    return (
+      <div className="container mx-auto py-10">
+        <div className="flex items-center gap-2 mb-6">
+          <Button variant="outline" size="icon" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <Skeleton className="h-8 w-64" />
+        </div>
+        <Card className="max-w-2xl mx-auto">
+          <CardHeader>
+            <Skeleton className="h-8 w-full mb-2" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </CardContent>
+          <CardFooter>
+            <Skeleton className="h-10 w-24 mr-2" />
+            <Skeleton className="h-10 w-24" />
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
 
   if (estudiantes === undefined) {
     return (

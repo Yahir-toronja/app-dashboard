@@ -7,38 +7,39 @@ import { Doc, Id } from './_generated/dataModel';
 
 // Definimos la tabla de usuarios directamente en este archivo
 export const usuarios = defineTable({
-  id_clerk: v.string(),
+  clerkId: v.string(), // ID de usuario de Clerk
   nombre: v.string(),
-  email: v.string(),
-  rol: v.string(),
-  password: v.string(),
+  correo: v.string(),
+  estado: v.union(v.literal("activo"), v.literal("bloqueado")), // Estado del usuario
+  fechaCreacion: v.number(), // Timestamp de creación
+  rol: v.string(), // Nuevo campo para el rol del usuario (ej: "admin", "user", etc.)
 });
 
 // CREATE - Crear un nuevo usuario
 export const createUsuario = mutation({
   // Definimos los argumentos que se deben pasar a la función
   args: {
-    id_clerk: v.string(),
+    clerkId: v.string(),
     nombre: v.string(),
-    email: v.string(),
+    correo: v.string(),
     rol: v.string(),
-    password: v.string(),
+    estado: v.union(v.literal("activo"), v.literal("bloqueado")),
   },
   // La función para crear un usuario
   handler: async (ctx, args) => {
-    // Verificamos si ya existe un usuario con el mismo email o id_clerk
+    // Verificamos si ya existe un usuario con el mismo correo o clerkId
     const existingUserByEmail = await ctx.db
       .query("usuarios")
-      .filter((q) => q.eq(q.field('email'), args.email))
+      .filter((q) => q.eq(q.field('correo'), args.correo))
       .first();
     
     const existingUserById = await ctx.db
       .query("usuarios")
-      .filter((q) => q.eq(q.field('id_clerk'), args.id_clerk))
+      .filter((q) => q.eq(q.field('clerkId'), args.clerkId))
       .first();
       
     if (existingUserByEmail) {
-      throw new ConvexError('Ya existe un usuario con este email');
+      throw new ConvexError('Ya existe un usuario con este correo');
     }
     
     if (existingUserById) {
@@ -47,18 +48,24 @@ export const createUsuario = mutation({
     
     // Insertamos el nuevo usuario en la base de datos
     const id = await ctx.db.insert("usuarios", {
-      id_clerk: args.id_clerk,
+      clerkId: args.clerkId,
       nombre: args.nombre,
-      email: args.email,
+      correo: args.correo,
       rol: args.rol,
-      password: args.password, // Nota: En producción, asegúrate de nunca almacenar contraseñas en texto plano
+      estado: args.estado || "activo",
+      fechaCreacion: Date.now(),
     });
     
     return {
       id,
-      ...args,
+      clerkId: args.clerkId,
+      nombre: args.nombre,
+      correo: args.correo,
+      rol: args.rol,
+      estado: args.estado || "activo",
+      fechaCreacion: Date.now(),
     };
-  },
+  }
 });
 
 // READ - Obtener todos los usuarios
@@ -67,7 +74,7 @@ export const getAllUsuarios = query({
     // Obtenemos todos los usuarios de la base de datos
     const allUsers = await ctx.db.query("usuarios").collect();
     return allUsers;
-  },
+  }
 });
 
 // READ - Obtener un usuario por su ID
@@ -82,17 +89,17 @@ export const getUsuarioById = query({
     }
     
     return user;
-  },
+  }
 });
 
-// READ - Buscar usuario por email
+// READ - Obtener un usuario por su correo
 export const getUsuarioByEmail = query({
-  args: { email: v.string() },
+  args: { correo: v.string() },
   handler: async (ctx, args) => {
-    // Buscamos el usuario por su email
+    // Buscamos el usuario por su correo
     const user = await ctx.db
       .query("usuarios")
-      .filter((q) => q.eq(q.field('email'), args.email))
+      .filter((q) => q.eq(q.field('correo'), args.correo))
       .first();
     
     if (!user) {
@@ -100,17 +107,17 @@ export const getUsuarioByEmail = query({
     }
     
     return user;
-  },
+  }
 });
 
-// READ - Buscar usuario por id_clerk
+// READ - Obtener un usuario por su ID de Clerk
 export const getUsuarioByClerkId = query({
-  args: { id_clerk: v.string() },
+  args: { clerkId: v.string() },
   handler: async (ctx, args) => {
     // Buscamos el usuario por su id de Clerk
     const user = await ctx.db
       .query("usuarios")
-      .filter((q) => q.eq(q.field('id_clerk'), args.id_clerk))
+      .filter((q) => q.eq(q.field('clerkId'), args.clerkId))
       .first();
     
     if (!user) {
@@ -118,7 +125,7 @@ export const getUsuarioByClerkId = query({
     }
     
     return user;
-  },
+  }
 });
 
 // UPDATE - Actualizar un usuario
@@ -126,9 +133,9 @@ export const updateUsuario = mutation({
   args: {
     id: v.id("usuarios"),
     nombre: v.optional(v.string()),
-    email: v.optional(v.string()),
+    correo: v.optional(v.string()),
     rol: v.optional(v.string()),
-    password: v.optional(v.string()),
+    estado: v.optional(v.union(v.literal("activo"), v.literal("bloqueado"))),
   },
   handler: async (ctx, args) => {
     // Verificamos que el usuario exista
@@ -138,15 +145,15 @@ export const updateUsuario = mutation({
       throw new ConvexError('Usuario no encontrado');
     }
     
-    // Si se actualiza el email, verificamos que no exista otro usuario con ese email
-    if (args.email && args.email !== existingUser.email) {
+    // Si se actualiza el correo, verificamos que no exista otro usuario con ese correo
+    if (args.correo && args.correo !== existingUser.correo) {
       const userWithEmail = await ctx.db
         .query("usuarios")
-        .filter((q) => q.eq(q.field('email'), args.email))
+        .filter((q) => q.eq(q.field('correo'), args.correo))
         .first();
         
       if (userWithEmail) {
-        throw new ConvexError('Ya existe un usuario con este email');
+        throw new ConvexError('Ya existe un usuario con este correo');
       }
     }
     
@@ -154,19 +161,18 @@ export const updateUsuario = mutation({
     const fieldsToUpdate: Partial<typeof existingUser> = {};
     
     if (args.nombre !== undefined) fieldsToUpdate.nombre = args.nombre;
-    if (args.email !== undefined) fieldsToUpdate.email = args.email;
+    if (args.correo !== undefined) fieldsToUpdate.correo = args.correo;
     if (args.rol !== undefined) fieldsToUpdate.rol = args.rol;
-    if (args.password !== undefined) fieldsToUpdate.password = args.password;
+    if (args.estado !== undefined) fieldsToUpdate.estado = args.estado;
     
     // Actualizamos el usuario
     await ctx.db.patch(args.id, fieldsToUpdate);
     
-    // Devolvemos el usuario actualizado
     return {
-      ...existingUser,
-      ...fieldsToUpdate,
+      success: true,
+      updatedId: args.id,
     };
-  },
+  }
 });
 
 // DELETE - Eliminar un usuario
@@ -187,5 +193,5 @@ export const deleteUsuario = mutation({
       success: true,
       deletedId: args.id,
     };
-  },
+  }
 });

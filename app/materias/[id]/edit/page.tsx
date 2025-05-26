@@ -12,11 +12,32 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { ArrowLeft, Save } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function EditarMateriaPage({ params }: { params: { id: string } }) {
-  const { id } = params;
-  const materiaId = id as Id<"materia">;
+// Interfaz para manejar params asíncronos en Next.js 15
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function EditarMateriaPage({ params }: PageProps) {
   const router = useRouter();
-  const materia = useQuery(api.materia.obtenerMateriaPorId, { id: materiaId });
+  const [id, setId] = useState<string>("");
+  const [isParamsLoaded, setIsParamsLoaded] = useState(false);
+  
+  // Resolver los params asíncronos
+  useEffect(() => {
+    const resolveParams = async () => {
+      const resolvedParams = await params;
+      setId(resolvedParams.id);
+      setIsParamsLoaded(true);
+    };
+    
+    resolveParams();
+  }, [params]);
+
+  const materiaId = id as Id<"materia">;
+  const materia = useQuery(
+    api.materia.obtenerMateriaPorId, 
+    isParamsLoaded ? { id: materiaId } : "skip"
+  );
   const actualizarMateria = useMutation(api.materia.actualizarMateria);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,7 +56,8 @@ export default function EditarMateriaPage({ params }: { params: { id: string } }
     }
   }, [materia]);
   
-  if (materia === undefined) {
+  // Mostrar skeleton mientras se cargan los params o los datos
+  if (!isParamsLoaded || materia === undefined) {
     return (
       <div className="container mx-auto py-10">
         <div className="flex items-center gap-2 mb-6">
@@ -139,8 +161,6 @@ export default function EditarMateriaPage({ params }: { params: { id: string } }
                 required
               />
             </div>
-            
-
           </CardContent>
           
           <CardFooter className="flex justify-between">
