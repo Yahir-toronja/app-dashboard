@@ -10,8 +10,7 @@ export const usuarios = defineTable({
   clerkId: v.string(), // ID de usuario de Clerk
   nombre: v.string(),
   correo: v.string(),
-  estado: v.union(v.literal("activo"), v.literal("bloqueado")), // Estado del usuario
-  fechaCreacion: v.number(), // Timestamp de creación
+  password: v.string(), // Contraseña del usuario
   rol: v.string(), // Nuevo campo para el rol del usuario (ej: "admin", "user", etc.)
 });
 
@@ -22,8 +21,8 @@ export const createUsuario = mutation({
     clerkId: v.string(),
     nombre: v.string(),
     correo: v.string(),
+    password: v.string(),
     rol: v.string(),
-    estado: v.union(v.literal("activo"), v.literal("bloqueado")),
   },
   // La función para crear un usuario
   handler: async (ctx, args) => {
@@ -51,9 +50,8 @@ export const createUsuario = mutation({
       clerkId: args.clerkId,
       nombre: args.nombre,
       correo: args.correo,
+      password: args.password,
       rol: args.rol,
-      estado: args.estado || "activo",
-      fechaCreacion: Date.now(),
     });
     
     return {
@@ -61,9 +59,8 @@ export const createUsuario = mutation({
       clerkId: args.clerkId,
       nombre: args.nombre,
       correo: args.correo,
+      password: args.password,
       rol: args.rol,
-      estado: args.estado || "activo",
-      fechaCreacion: Date.now(),
     };
   }
 });
@@ -134,8 +131,8 @@ export const updateUsuario = mutation({
     id: v.id("usuarios"),
     nombre: v.optional(v.string()),
     correo: v.optional(v.string()),
+    password: v.optional(v.string()),
     rol: v.optional(v.string()),
-    estado: v.optional(v.union(v.literal("activo"), v.literal("bloqueado"))),
   },
   handler: async (ctx, args) => {
     // Verificamos que el usuario exista
@@ -162,8 +159,8 @@ export const updateUsuario = mutation({
     
     if (args.nombre !== undefined) fieldsToUpdate.nombre = args.nombre;
     if (args.correo !== undefined) fieldsToUpdate.correo = args.correo;
+    if (args.password !== undefined) fieldsToUpdate.password = args.password;
     if (args.rol !== undefined) fieldsToUpdate.rol = args.rol;
-    if (args.estado !== undefined) fieldsToUpdate.estado = args.estado;
     
     // Actualizamos el usuario
     await ctx.db.patch(args.id, fieldsToUpdate);

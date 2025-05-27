@@ -36,8 +36,7 @@ interface Usuario {
   clerkId: string;
   nombre: string;
   correo: string;
-  estado: 'activo' | 'bloqueado';
-  fechaCreacion: number;
+  password: string;
   rol: string;
 }
 
@@ -51,8 +50,7 @@ export default function UsuariosPage() {
   const [newUserRole, setNewUserRole] = useState('user');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
 
-  // State for filtering and search
-  const [filterEstado, setFilterEstado] = useState<'activo' | 'bloqueado' | undefined>(undefined);
+  // State for search
   const [searchQuery, setSearchQuery] = useState('');
 
   // State for Edit User Dialog
@@ -61,13 +59,13 @@ export default function UsuariosPage() {
   const [editedName, setEditedName] = useState('');
   const [editedEmail, setEditedEmail] = useState('');
   const [editedRole, setEditedRole] = useState(''); // Estado para editar rol
-  const [editedEstado, setEditedEstado] = useState<'activo' | 'bloqueado'>('activo'); // Estado para editar estado
+  const [editedPassword, setEditedPassword] = useState<string>('');
   const [editError, setEditError] = useState<string | null>(null);
   const [isSavingUser, setIsSavingUser] = useState(false);
 
   // Convex hook for reading users
   // Asegúrate de que api.usuarios.getUsuarios ahora apunte a api.functions.user.getUsuarios
-  const usuarios = useQuery(api.functions.user.getUsuarios, { estado: filterEstado, busqueda: searchQuery });
+  const usuarios = useQuery(api.functions.user.getUsuarios, { busqueda: searchQuery });
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,7 +123,6 @@ export default function UsuariosPage() {
     setEditedName(user.nombre);
     setEditedEmail(user.correo);
     setEditedRole(user.rol); // Cargar el rol actual
-    setEditedEstado(user.estado); // Cargar el estado actual
     setEditError(null);
     setIsEditDialogOpen(true);
   };
@@ -142,13 +139,11 @@ export default function UsuariosPage() {
         nombre?: string;
         correo?: string;
         rol?: string;
-        estado?: 'activo' | 'bloqueado';
       } = {};
 
       if (editedName !== editingUser.nombre) updates.nombre = editedName;
       if (editedEmail !== editingUser.correo) updates.correo = editedEmail;
       if (editedRole !== editingUser.rol) updates.rol = editedRole;
-      if (editedEstado !== editingUser.estado) updates.estado = editedEstado;
 
       if (Object.keys(updates).length === 0) {
         toast.info("No hay cambios para guardar.");
@@ -196,43 +191,7 @@ export default function UsuariosPage() {
     }
   };
 
-  const handleBlockUnblock = async (userToUpdate: Usuario) => {
-    const accion = userToUpdate.estado === 'activo' ? 'bloquear' : 'desbloquear';
-    const nuevoEstado = userToUpdate.estado === 'activo' ? 'bloqueado' : 'activo';
-
-    if (confirm(`¿Estás seguro de que quieres ${accion} a este usuario (${userToUpdate.nombre})?`)) {
-      try {
-        const response = await fetch('/api/users', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            id: userToUpdate._id,
-            clerkUserId: userToUpdate.clerkId,
-            estado: nuevoEstado,
-          }),
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || `Error desconocido al ${accion} usuario.`);
-        }
-
-        toast.success(result.message || `Usuario ${nuevoEstado} exitosamente.`);
-      } catch (err: unknown) { // CAMBIO AQUÍ
-        console.error(`Error en handleBlockUnblock (frontend):`, err);
-        if (err instanceof Error) {
-          toast.error(err.message);
-        } else if (typeof err === 'object' && err !== null && 'message' in err && typeof (err as { message: unknown }).message === 'string') {
-          toast.error((err as { message: string }).message);
-        } else {
-          toast.error(`Error al ${accion} usuario.`);
-        }
-      }
-    }
-  };
+  // La función handleBlockUnblock ha sido eliminada porque el campo 'estado' ya no existe en el esquema
 
   const handleDeleteUser = async (userToDelete: Usuario) => {
     if (confirm(`¿Estás seguro de que quieres eliminar a este usuario (${userToDelete.nombre})? Esta acción es irreversible y lo eliminará de Clerk y Convex.`)) {
@@ -359,24 +318,6 @@ export default function UsuariosPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="filterEstado">Filtrar por estado:</Label>
-              <Select
-                value={filterEstado || 'all'}
-                onValueChange={(value: 'activo' | 'bloqueado' | 'all') =>
-                  setFilterEstado(value === 'all' ? undefined : value)
-                }
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="activo">Activo</SelectItem>
-                  <SelectItem value="bloqueado">Bloqueado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <div className="flex items-center gap-2 flex-grow">
               <Label htmlFor="searchQuery">Buscar:</Label>
               <Input
@@ -402,8 +343,6 @@ export default function UsuariosPage() {
                     <TableHead>Nombre</TableHead>
                     <TableHead>Correo</TableHead>
                     <TableHead>Rol</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Fecha Creación</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -413,17 +352,8 @@ export default function UsuariosPage() {
                       <TableCell>{usuario.nombre}</TableCell>
                       <TableCell>{usuario.correo}</TableCell>
                       <TableCell>{usuario.rol}</TableCell>
-                      <TableCell>{usuario.estado}</TableCell>
-                      <TableCell>{new Date(usuario.fechaCreacion).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right flex space-x-2 justify-end">
                         <Button variant="outline" size="sm" onClick={() => handleEditUserClick(usuario)}>Editar</Button>
-                        <Button
-                          variant={usuario.estado === 'activo' ? 'destructive' : 'secondary'}
-                          size="sm"
-                          onClick={() => handleBlockUnblock(usuario)}
-                        >
-                          {usuario.estado === 'activo' ? 'Bloquear' : 'Desbloquear'}
-                        </Button>
                         <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(usuario)}>Eliminar</Button>
                       </TableCell>
                     </TableRow>
@@ -490,22 +420,18 @@ export default function UsuariosPage() {
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="estado" className="text-right">
-                  Estado
-                </Label>
-                <Select
-                  value={editedEstado}
-                  onValueChange={(value: 'activo' | 'bloqueado') => setEditedEstado(value)}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Seleccionar Estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="activo">Activo</SelectItem>
-                    <SelectItem value="bloqueado">Bloqueado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                 <Label htmlFor="password" className="text-right">
+                   Contraseña
+                 </Label>
+                 <Input
+                   id="password"
+                   type="password"
+                   placeholder="Nueva contraseña (opcional)"
+                   value={editedPassword || ''}
+                   onChange={(e) => setEditedPassword(e.target.value)}
+                   className="col-span-3"
+                 />
+               </div>
               <DialogFooter>
                 <Button type="submit" disabled={isSavingUser}>
                   {isSavingUser ? 'Guardando...' : 'Guardar Cambios'}

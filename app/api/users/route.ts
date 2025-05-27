@@ -49,6 +49,7 @@ export async function POST(request: Request) {
       clerkUserId: clerkUser.id,
       nombre,
       correo,
+      password,
       rol,
     });
 
@@ -133,7 +134,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const { id, clerkUserId, nombre, correo, rol, estado } = await request.json(); // Recibe también 'estado' para bloquear/desbloquear
+    const { id, clerkUserId, nombre, correo, rol, password } = await request.json(); // Recibe también 'password' para actualizar contraseña
 
     // Validaciones básicas
     if (!id || !clerkUserId) { // 'id' es el ID de Convex
@@ -151,7 +152,7 @@ export async function PATCH(request: Request) {
     const currentPrimaryEmailAddress = currentPrimaryEmail?.emailAddress;
 
     const updatesClerk: { firstName?: string; primaryEmailAddressID?: string; } = {};
-    const updatesConvex: { nombre?: string; correo?: string; estado?: "activo" | "bloqueado"; rol?: string; } = {};
+    const updatesConvex: { nombre?: string; correo?: string; password?: string; rol?: string; } = {};
 
     let newEmailCreatedId: string | null = null;
     // let newEmailAddressToSet: string | undefined = undefined;
@@ -230,11 +231,23 @@ export async function PATCH(request: Request) {
       // await clerk.users.updateUser(clerkId, { publicMetadata: { role: rol } });
     }
 
-    // 4. Manejar actualización de Estado (Bloquear/Desbloquear) - Solo en Convex si Clerk no maneja "estado" directamente
-    if (estado !== undefined) {
-        updatesConvex.estado = estado;
-        // Si Clerk tiene un campo de "suspendido" o similar, podrías actualizarlo aquí:
-        // await clerk.users.updateUser(clerkId, { publicMetadata: { status: estado } });
+    // 4. Manejar actualización de Contraseña
+    if (password !== undefined && password.trim() !== '') {
+        // Validaciones básicas de la contraseña
+        if (password.length < 8) {
+            return NextResponse.json(
+                { success: false, error: "La contraseña debe tener al menos 8 caracteres." },
+                { status: 400 }
+            );
+        }
+        
+        // Actualizar contraseña en Clerk
+        await clerk.users.updateUser(clerkUserId, {
+            password: password,
+        });
+        
+        // Actualizar contraseña en Convex
+        updatesConvex.password = password;
     }
 
     // Realizar actualizaciones en Clerk (si hay algo que actualizar)

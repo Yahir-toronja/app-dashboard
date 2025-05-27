@@ -8,17 +8,17 @@ export const saveUser = mutation({
     clerkUserId: v.string(), // Se renombra a clerkUserId para mayor claridad
     nombre: v.string(),
     correo: v.string(),
+    password: v.string(), // Se incluye la contraseña
     rol: v.string(), // Se incluye el rol
   },
-  handler: async (ctx, { clerkUserId, nombre, correo, rol }) => {
+  handler: async (ctx, { clerkUserId, nombre, correo, password, rol }) => {
     // Aquí no hay validación de unicidad de correo porque la API Route se encarga de eso con Clerk.
     // Asumimos que si llega aquí, ya pasó las validaciones previas.
     const userId = await ctx.db.insert("usuarios", {
       clerkId: clerkUserId,
       nombre: nombre,
       correo: correo,
-      estado: "activo", // Por defecto, activo al crearse
-      fechaCreacion: Date.now(),
+      password: password, // Guarda la contraseña
       rol: rol, // Guarda el rol
     });
     return { userId };
@@ -31,7 +31,7 @@ export const updateUser = mutation({
     id: v.id("usuarios"), // El ID de Convex para el documento de usuario
     nombre: v.optional(v.string()),
     correo: v.optional(v.string()),
-    estado: v.optional(v.union(v.literal("activo"), v.literal("bloqueado"))),
+    password: v.optional(v.string()), // Permite actualizar la contraseña
     rol: v.optional(v.string()), // Permite actualizar el rol
   },
   handler: async (ctx, { id, ...updates }) => {
@@ -75,15 +75,10 @@ export const getUsuarioPorCorreo = query({
 // Query para consultar usuarios (se mantiene igual para la página de admin)
 export const getUsuarios = query({
   args: {
-    estado: v.optional(v.union(v.literal("activo"), v.literal("bloqueado"))),
     busqueda: v.optional(v.string()),
   },
-  handler: async (ctx, { estado, busqueda }) => {
+  handler: async (ctx, { busqueda }) => {
     let usersQuery = ctx.db.query("usuarios");
-
-    if (estado) {
-      usersQuery = usersQuery.filter((q) => q.eq(q.field("estado"), estado));
-    }
 
     // Obtenemos todos los usuarios
     const usuarios = await usersQuery.collect();
