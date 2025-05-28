@@ -56,6 +56,9 @@ export const usuarios = defineTable({
     correo: v.string(),
     password: v.string(), // Contraseña del usuario
     rol: v.string(), // Nuevo campo para el rol del usuario (ej: "admin", "user", etc.)
+    estado: v.optional(v.string()), // Estado del usuario ("activo", "bloqueado")
+    fechaCreacion: v.optional(v.number()), // Timestamp de creación
+    fechaActualizacion: v.optional(v.number()), // Timestamp de última actualización
 })
     .index("by_clerkId", ["clerkId"]) // Índice para buscar por Clerk ID
     .index("by_correo", ["correo"]); 

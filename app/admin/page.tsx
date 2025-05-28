@@ -1,448 +1,551 @@
-// app/admin/page.tsx
 "use client";
 
-import React, { useState } from 'react';
-import { useQuery } from 'convex/react'; // Ya no necesitamos useAction para CUD
-import { api } from '../../convex/_generated/api'; // Asegúrate de que apunte a api.functions.user
-import { SignInButton, SignOutButton, useUser } from '@clerk/nextjs';
-
-// Shadcn UI Components
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { useState, useEffect } from "react";
+import { useConvexAuth } from "convex/react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from 'sonner';
-import { Toaster } from '@/components/ui/sonner';
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2, Search, Plus, Pencil, Trash, Lock, Unlock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
+// Definir tipos para el usuario basado en la estructura real de Convex
 interface Usuario {
-  _id: string;
+  _id: Id<"usuarios">;
+  _creationTime: number;
   clerkId: string;
   nombre: string;
   correo: string;
-  password: string;
   rol: string;
+  password: string;
+  estado?: string;
+  fechaCreacion?: number;
+  fechaActualizacion?: number;
 }
 
-export default function UsuariosPage() {
-  const { user, isSignedIn } = useUser();
+export default function AdminPage() {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const router = useRouter();
 
-  // State for Create User form
-  const [newUserName, setNewUserName] = useState('');
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserPassword, setNewUserPassword] = useState(''); // NUEVO ESTADO PARA LA CONTRASEÑA
-  const [newUserRole, setNewUserRole] = useState('user');
+  // Estados para la creación de usuario
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserRole, setNewUserRole] = useState("user");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // State for search
-  const [searchQuery, setSearchQuery] = useState('');
+  // Estados para la edición de usuario
+  const [isEditingUser, setIsEditingUser] = useState(false);
+  const [editUserId, setEditUserId] = useState<Id<"usuarios"> | null>(null);
+  const [editUserClerkId, setEditUserClerkId] = useState("");
+  const [editUserName, setEditUserName] = useState("");
+  const [editUserEmail, setEditUserEmail] = useState("");
+  const [editUserRole, setEditUserRole] = useState("");
+  const [editUserPassword, setEditUserPassword] = useState("");
 
-  // State for Edit User Dialog
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<Usuario | null>(null);
-  const [editedName, setEditedName] = useState('');
-  const [editedEmail, setEditedEmail] = useState('');
-  const [editedRole, setEditedRole] = useState(''); // Estado para editar rol
-  const [editedPassword, setEditedPassword] = useState<string>('');
-  const [editError, setEditError] = useState<string | null>(null);
-  const [isSavingUser, setIsSavingUser] = useState(false);
+  // Estado para la búsqueda
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredUsers, setFilteredUsers] = useState<Usuario[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
-  // Convex hook for reading users
-  // Asegúrate de que api.usuarios.getUsuarios ahora apunte a api.functions.user.getUsuarios
-  const usuarios = useQuery(api.functions.user.getUsuarios, { busqueda: searchQuery });
+  // Obtener usuarios desde Convex
+  const users = useQuery(api.functions.user.getUsuarios, {
+    busqueda: "",
+    estado: statusFilter || undefined,
+  });
 
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsCreatingUser(true);
+  // Filtrar usuarios según el término de búsqueda
+  useEffect(() => {
+    if (users) {
+      if (searchTerm.trim() === "") {
+        setFilteredUsers(users);
+      } else {
+        const filtered = users.filter(
+          (user) =>
+            user.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.correo.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        setFilteredUsers(filtered);
+      }
+    }
+  }, [users, searchTerm]);
 
-    if (newUserPassword.length < 8) {
-      toast.error("La contraseña debe tener al menos 8 caracteres.");
-      setIsCreatingUser(false);
+  // Redireccionar si no está autenticado
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/sign-in");
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  // Función para crear un nuevo usuario
+  const handleCreateUser = async () => {
+    if (!newUserName || !newUserEmail || !newUserPassword || !newUserRole) {
+      toast.error("Todos los campos son obligatorios");
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
-      const response = await fetch('/api/users', {
-        method: 'POST',
+      const response = await fetch("/api/users", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           nombre: newUserName,
           correo: newUserEmail,
-          rol: newUserRole,
           password: newUserPassword,
+          rol: newUserRole,
         }),
       });
 
-      const result = await response.json();
+      const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Error desconocido al crear usuario.');
-      }
-
-      toast.success(result.message || "Usuario creado y credenciales enviadas por correo.");
-
-      setNewUserName('');
-      setNewUserEmail('');
-      setNewUserPassword('');
-      setNewUserRole('user');
-    } catch (err: unknown) { // CAMBIO AQUÍ: err ahora es 'unknown'
-      console.error("Error en handleCreateUser (frontend):", err);
-      // Verifica si el error es una instancia de Error o si tiene una propiedad 'message'
-      if (err instanceof Error) {
-        toast.error(err.message);
-      } else if (typeof err === 'object' && err !== null && 'message' in err && typeof (err as { message: unknown }).message === 'string') {
-        toast.error((err as { message: string }).message);
+      if (response.ok) {
+        toast.success("Usuario creado exitosamente");
+        setIsCreatingUser(false);
+        setNewUserName("");
+        setNewUserEmail("");
+        setNewUserPassword("");
+        setNewUserRole("user");
       } else {
-        toast.error('Error al crear usuario.');
+        toast.error(`Error: ${data.error || "No se pudo crear el usuario"}`);
       }
+    } catch (error) {
+      console.error("Error al crear usuario:", error);
+      toast.error("Error al crear usuario");
     } finally {
-      setIsCreatingUser(false);
+      setIsSubmitting(false);
     }
   };
 
+  // Función para abrir el diálogo de edición
   const handleEditUserClick = (user: Usuario) => {
-    setEditingUser(user);
-    setEditedName(user.nombre);
-    setEditedEmail(user.correo);
-    setEditedRole(user.rol); // Cargar el rol actual
-    setEditError(null);
-    setIsEditDialogOpen(true);
+    setEditUserId(user._id);
+    setEditUserClerkId(user.clerkId);
+    setEditUserName(user.nombre);
+    setEditUserEmail(user.correo);
+    setEditUserRole(user.rol);
+    setEditUserPassword(""); // Resetear contraseña
+    setIsEditingUser(true);
   };
 
-  const handleSaveEditedUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingUser) return;
+  // Función para guardar los cambios de un usuario
+  const handleSaveEditedUser = async () => {
+    if (!editUserId || !editUserName || !editUserEmail || !editUserRole) {
+      toast.error("Nombre, correo y rol son obligatorios");
+      return;
+    }
 
-    setEditError(null);
-    setIsSavingUser(true);
+    setIsSubmitting(true);
 
     try {
-      const updates: {
-        nombre?: string;
-        correo?: string;
-        rol?: string;
-      } = {};
-
-      if (editedName !== editingUser.nombre) updates.nombre = editedName;
-      if (editedEmail !== editingUser.correo) updates.correo = editedEmail;
-      if (editedRole !== editingUser.rol) updates.rol = editedRole;
-
-      if (Object.keys(updates).length === 0) {
-        toast.info("No hay cambios para guardar.");
-        setIsEditDialogOpen(false);
-        setEditingUser(null);
-        return;
-      }
-
-      const response = await fetch('/api/users', {
-        method: 'PATCH',
+      const response = await fetch("/api/users", {
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          id: editingUser._id,
-          clerkUserId: editingUser.clerkId,
-          ...updates,
+          id: editUserId,
+          clerkId: editUserClerkId,
+          nombre: editUserName,
+          correo: editUserEmail,
+          rol: editUserRole,
+          password: editUserPassword || undefined, // Solo enviar si se proporcionó
         }),
       });
 
-      const result = await response.json();
+      const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Error desconocido al editar usuario.');
-      }
-
-      toast.success(result.message || "Usuario editado exitosamente.");
-
-      setIsEditDialogOpen(false);
-      setEditingUser(null);
-    } catch (err: unknown) { // CAMBIO AQUÍ
-      console.error('Error capturado en handleSaveEditedUser (frontend):', err);
-      if (err instanceof Error) {
-        setEditError(err.message);
-        toast.error(err.message);
-      } else if (typeof err === 'object' && err !== null && 'message' in err && typeof (err as { message: unknown }).message === 'string') {
-        setEditError((err as { message: string }).message);
-        toast.error((err as { message: string }).message);
+      if (response.ok) {
+        toast.success("Usuario actualizado exitosamente");
+        setIsEditingUser(false);
       } else {
-        setEditError('Error al editar usuario.');
-        toast.error('Error al editar usuario.');
+        toast.error(`Error: ${data.error || "No se pudo actualizar el usuario"}`);
       }
+    } catch (error) {
+      console.error("Error al actualizar usuario:", error);
+      toast.error("Error al actualizar usuario");
     } finally {
-      setIsSavingUser(false);
+      setIsSubmitting(false);
     }
   };
 
-  // La función handleBlockUnblock ha sido eliminada porque el campo 'estado' ya no existe en el esquema
+  // Función para eliminar un usuario
+  const handleDeleteUser = async (userId: Id<"usuarios">, clerkId: string) => {
+    if (!confirm("¿Estás seguro de que deseas eliminar este usuario?")) {
+      return;
+    }
 
-  const handleDeleteUser = async (userToDelete: Usuario) => {
-    if (confirm(`¿Estás seguro de que quieres eliminar a este usuario (${userToDelete.nombre})? Esta acción es irreversible y lo eliminará de Clerk y Convex.`)) {
-      try {
-        const response = await fetch('/api/users', {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            clerkUserId: userToDelete.clerkId,
-            convexUserId: userToDelete._id,
-          }),
-        });
+    try {
+      const response = await fetch(`/api/users?id=${userId}&clerkId=${clerkId}`, {
+        method: "DELETE",
+      });
 
-        const result = await response.json();
+      const data = await response.json();
 
-        if (!response.ok) {
-          throw new Error(result.error || 'Error desconocido al eliminar usuario.');
-        }
-
-        toast.success(result.message || "Usuario eliminado exitosamente.");
-      } catch (err: unknown) { // CAMBIO AQUÍ
-        console.error(`Error en handleDeleteUser (frontend):`, err);
-        if (err instanceof Error) {
-          toast.error(err.message);
-        } else if (typeof err === 'object' && err !== null && 'message' in err && typeof (err as { message: unknown }).message === 'string') {
-          toast.error((err as { message: string }).message);
-        } else {
-          toast.error('Error al eliminar usuario.');
-        }
+      if (response.ok) {
+        toast.success("Usuario eliminado exitosamente");
+      } else {
+        toast.error(`Error: ${data.error || "No se pudo eliminar el usuario"}`);
       }
+    } catch (error) {
+      console.error("Error al eliminar usuario:", error);
+      toast.error("Error al eliminar usuario");
     }
   };
 
-  if (!isSignedIn || !user) {
+  // Función para bloquear/desbloquear un usuario
+  const handleToggleUserStatus = async (userId: Id<"usuarios">, clerkId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "activo" ? "bloqueado" : "activo";
+    const actionText = newStatus === "bloqueado" ? "bloquear" : "desbloquear";
+    
+    if (!confirm(`¿Estás seguro de que deseas ${actionText} este usuario?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/users", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: userId,
+          clerkId: clerkId,
+          estado: newStatus,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(`Usuario ${newStatus === "bloqueado" ? "bloqueado" : "desbloqueado"} exitosamente`);
+      } else {
+        toast.error(`Error: ${data.error || `No se pudo ${actionText} el usuario`}`);
+      }
+    } catch (error) {
+      console.error(`Error al ${actionText} usuario:`, error);
+      toast.error(`Error al ${actionText} usuario`);
+    }
+  };
+
+  if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <h2 className="text-xl font-semibold mb-4">Por favor, inicia sesión para acceder al panel de administración de usuarios.</h2>
-        <SignInButton mode="modal" />
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  // Optional: Restrict access based on Clerk role
-  // Si usas un rol en publicMetadata de Clerk, deberías obtenerlo así:
-  // const userRole = user.publicMetadata?.role as string | undefined;
-  // if (!userRole || userRole !== 'admin') {
-  //   return (
-  //     <div className="flex flex-col items-center justify-center min-h-screen p-4">
-  //       <h2 className="text-xl font-semibold mb-4">Acceso denegado. No tienes los permisos necesarios.</h2>
-  //       <SignOutButton />
-  //     </div>
-  //   );
-  // }
-  // O bien, si el rol está en tu tabla Convex, puedes verificar `usuarios[0].rol` si eres el admin (y cargar el admin user).
-  // La mejor forma es verificar el rol de Clerk directamente para la autorización de la página.
-
-
   return (
-    <div className="container mx-auto p-6 space-y-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Gestión de Usuarios</h1>
-        <SignOutButton />
+    <div className="container mx-auto py-10 px-4">
+      <h1 className="text-3xl font-bold mb-8">Administración de Usuarios</h1>
+
+      {/* Sección de búsqueda y filtros */}
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Buscar por nombre o correo..."
+            className="pl-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <Select
+          value={statusFilter || ""}
+          onValueChange={(value) => setStatusFilter(value || null)}
+        >
+          <SelectTrigger className="w-full md:w-[180px]">
+            <SelectValue placeholder="Filtrar por estado" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Todos</SelectItem>
+            <SelectItem value="activo">Activos</SelectItem>
+            <SelectItem value="bloqueado">Bloqueados</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          onClick={() => setIsCreatingUser(true)}
+          className="flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" /> Nuevo Usuario
+        </Button>
       </div>
 
-      <hr className="my-6" />
+      {/* Tabla de usuarios */}
+      <div className="rounded-md border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="py-3 px-4 text-left font-medium">Nombre</th>
+              <th className="py-3 px-4 text-left font-medium">Correo</th>
+              <th className="py-3 px-4 text-left font-medium">Rol</th>
+              <th className="py-3 px-4 text-left font-medium">Estado</th>
+              <th className="py-3 px-4 text-left font-medium">Fecha Creación</th>
+              <th className="py-3 px-4 text-center font-medium">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredUsers && filteredUsers.length > 0 ? (
+              filteredUsers.map((user) => (
+                <tr key={user._id} className="border-t hover:bg-muted/50">
+                  <td className="py-3 px-4">{user.nombre}</td>
+                  <td className="py-3 px-4">{user.correo}</td>
+                  <td className="py-3 px-4">
+                    <Badge variant="outline">{user.rol}</Badge>
+                  </td>
+                  <td className="py-3 px-4">
+                    <Badge
+                      variant={user.estado === "activo" ? "success" : "destructive"}
+                      className="capitalize"
+                    >
+                      {user.estado || "activo"}
+                    </Badge>
+                  </td>
+                  <td className="py-3 px-4">
+                    {user.fechaCreacion
+                      ? format(new Date(user.fechaCreacion), "dd/MM/yyyy HH:mm", {
+                          locale: es,
+                        })
+                      : "N/A"}
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex justify-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditUserClick(user)}
+                        title="Editar"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleToggleUserStatus(user._id, user.clerkId, user.estado || "activo")}
+                        title={user.estado === "bloqueado" ? "Desbloquear" : "Bloquear"}
+                      >
+                        {user.estado === "bloqueado" ? (
+                          <Unlock className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Lock className="h-4 w-4 text-amber-500" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteUser(user._id, user.clerkId)}
+                        title="Eliminar"
+                      >
+                        <Trash className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={6} className="py-6 text-center text-muted-foreground">
+                  {users && users.length === 0
+                    ? "No hay usuarios registrados"
+                    : "No se encontraron resultados"}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      {/* Create New User Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Crear Nuevo Usuario</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Input
-              type="text"
-              placeholder="Nombre"
-              value={newUserName}
-              onChange={(e) => setNewUserName(e.target.value)}
-              required
-            />
-            <Input
-              type="email"
-              placeholder="Correo"
-              value={newUserEmail}
-              onChange={(e) => setNewUserEmail(e.target.value)}
-              required
-            />
-            <Input
-              type="password" // CAMBIO: AÑADIR CAMPO DE CONTRASEÑA
-              placeholder="Contraseña Inicial"
-              value={newUserPassword}
-              onChange={(e) => setNewUserPassword(e.target.value)}
-              required
-            />
-            <Select
-              value={newUserRole}
-              onValueChange={(value) => setNewUserRole(value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar Rol" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="user">Usuario</SelectItem>
-                <SelectItem value="admin">Administrador</SelectItem>
-                <SelectItem value="maestro">Maestro</SelectItem>
-                <SelectItem value="estudiante">Estudiante</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button type="submit" className="col-span-full md:col-span-1" disabled={isCreatingUser}>
-              {isCreatingUser ? 'Creando...' : 'Crear Usuario'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <hr className="my-6" />
-
-      {/* User List Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Usuarios</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="flex items-center gap-2 flex-grow">
-              <Label htmlFor="searchQuery">Buscar:</Label>
+      {/* Diálogo para crear usuario */}
+      <Dialog open={isCreatingUser} onOpenChange={setIsCreatingUser}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear Nuevo Usuario</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="name" className="text-sm font-medium">
+                Nombre
+              </label>
               <Input
-                id="searchQuery"
-                type="text"
-                placeholder="Nombre o correo..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-grow"
+                id="name"
+                value={newUserName}
+                onChange={(e) => setNewUserName(e.target.value)}
+                placeholder="Nombre completo"
               />
             </div>
-          </div>
-
-          {usuarios === undefined ? (
-            <p>Cargando usuarios...</p>
-          ) : usuarios.length === 0 ? (
-            <p>No hay usuarios registrados.</p>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Correo</TableHead>
-                    <TableHead>Rol</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {usuarios.map((usuario) => (
-                    <TableRow key={usuario._id}>
-                      <TableCell>{usuario.nombre}</TableCell>
-                      <TableCell>{usuario.correo}</TableCell>
-                      <TableCell>{usuario.rol}</TableCell>
-                      <TableCell className="text-right flex space-x-2 justify-end">
-                        <Button variant="outline" size="sm" onClick={() => handleEditUserClick(usuario)}>Editar</Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(usuario)}>Eliminar</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium">
+                Correo Electrónico
+              </label>
+              <Input
+                id="email"
+                type="email"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+                placeholder="correo@ejemplo.com"
+              />
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium">
+                Contraseña
+              </label>
+              <Input
+                id="password"
+                type="password"
+                value={newUserPassword}
+                onChange={(e) => setNewUserPassword(e.target.value)}
+                placeholder="Mínimo 8 caracteres"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="role" className="text-sm font-medium">
+                Rol
+              </label>
+              <Select
+                value={newUserRole}
+                onValueChange={(value) => setNewUserRole(value)}
+              >
+                <SelectTrigger id="role">
+                  <SelectValue placeholder="Seleccionar rol" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                  <SelectItem value="user">Usuario</SelectItem>
+                  <SelectItem value="teacher">Maestro</SelectItem>
+                  <SelectItem value="student">Estudiante</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreatingUser(false)}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateUser} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creando...
+                </>
+              ) : (
+                "Crear Usuario"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Edit User Dialog */}
-      {editingUser && (
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Editar Usuario</DialogTitle>
-              <DialogDescription>
-                Realiza cambios en el perfil del usuario. Haz clic en guardar cuando termines.
-              </DialogDescription>
-            </DialogHeader>
-            {editError && <p className="text-red-500 text-sm mt-2 mb-4">{editError}</p>}
-            <form onSubmit={handleSaveEditedUser} className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
-                  Nombre
-                </Label>
-                <Input
-                  id="name"
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="email" className="text-right">
-                  Correo
-                </Label>
-                <Input
-                  id="email"
-                  value={editedEmail}
-                  onChange={(e) => setEditedEmail(e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="role" className="text-right">
-                  Rol
-                </Label>
-                <Select
-                  value={editedRole}
-                  onValueChange={setEditedRole}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Seleccionar Rol" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user">Usuario</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="maestro">Maestro</SelectItem>
-                    <SelectItem value="estudiante">Estudiante</SelectItem>
-                    {/* Asegúrate de que estos roles coincidan con los que usas */}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                 <Label htmlFor="password" className="text-right">
-                   Contraseña
-                 </Label>
-                 <Input
-                   id="password"
-                   type="password"
-                   placeholder="Nueva contraseña (opcional)"
-                   value={editedPassword || ''}
-                   onChange={(e) => setEditedPassword(e.target.value)}
-                   className="col-span-3"
-                 />
-               </div>
-              <DialogFooter>
-                <Button type="submit" disabled={isSavingUser}>
-                  {isSavingUser ? 'Guardando...' : 'Guardar Cambios'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      <Toaster />
+      {/* Diálogo para editar usuario */}
+      <Dialog open={isEditingUser} onOpenChange={setIsEditingUser}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Usuario</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="edit-name" className="text-sm font-medium">
+                Nombre
+              </label>
+              <Input
+                id="edit-name"
+                value={editUserName}
+                onChange={(e) => setEditUserName(e.target.value)}
+                placeholder="Nombre completo"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="edit-email" className="text-sm font-medium">
+                Correo Electrónico
+              </label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editUserEmail}
+                onChange={(e) => setEditUserEmail(e.target.value)}
+                placeholder="correo@ejemplo.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="edit-password" className="text-sm font-medium">
+                Contraseña (dejar en blanco para no cambiar)
+              </label>
+              <Input
+                id="edit-password"
+                type="password"
+                value={editUserPassword}
+                onChange={(e) => setEditUserPassword(e.target.value)}
+                placeholder="Nueva contraseña (opcional)"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="edit-role" className="text-sm font-medium">
+                Rol
+              </label>
+              <Select
+                value={editUserRole}
+                onValueChange={(value) => setEditUserRole(value)}
+              >
+                <SelectTrigger id="edit-role">
+                  <SelectValue placeholder="Seleccionar rol" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                  <SelectItem value="user">Usuario</SelectItem>
+                  <SelectItem value="teacher">Maestro</SelectItem>
+                  <SelectItem value="student">Estudiante</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditingUser(false)}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEditedUser} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar Cambios"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
