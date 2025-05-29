@@ -8,7 +8,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { Footer } from "@/components/layout/footer";
-import { ConvexClientProvider } from "./ConvexClientProvider";
+import { ConvexClientProvider} from "./ConvexClientProvider"
 import { ClerkProvider } from '@clerk/nextjs';
 import { neobrutalism } from '@clerk/themes'
 

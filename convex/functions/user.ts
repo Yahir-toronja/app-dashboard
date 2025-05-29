@@ -164,3 +164,17 @@ export const getOrphanedUsers = query({
     return orphanedUsers;
   },
 });
+
+// convex/functions/user.ts
+export const getCurrentUser = query({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    
+    return await ctx.db
+      .query("usuarios")
+      .withIndex("by_clerkId", q => q.eq("clerkId", identity.subject))
+      .first();
+  }
+});
+
