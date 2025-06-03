@@ -90,24 +90,190 @@ export async function POST(request: Request) {
     const loginUrl = `${baseUrl}/sign-in`;
 
     const { data: emailResult, error: emailError } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL!,
-      to: correo,
-      subject: "¡Bienvenido! Tus credenciales de acceso a la plataforma",
-      html: `
-        <h1>Hola, ${nombre}!</h1>
-        <p>Gracias por registrarte en nuestra plataforma.</p>
-        <p>Tus credenciales de acceso son:</p>
-        <p><strong>Correo:</strong> ${correo}</p>
-        <p><strong>Contraseña temporal:</strong> <code>${password}</code></p>
-        <p>Por favor, usa esta contraseña para iniciar sesión y te recomendamos cambiarla en tu perfil por seguridad.</p>
-        <p>Haz clic aquí para iniciar sesión:</p>
-        <a href="${loginUrl}" style="padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">
-          Iniciar Sesión
-        </a>
-        <p>Si tienes problemas, copia y pega esta URL en tu navegador: <br/> ${loginUrl}</p>
-        <p>Atentamente,<br/>El Equipo</p>
-      `,
-    });
+  from: process.env.RESEND_FROM_EMAIL!,
+  to: correo,
+  subject: "¡Bienvenido a nuestra plataforma! Tus credenciales de acceso",
+  html: `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Bienvenido a nuestra plataforma</title>
+      <style>
+        /* Estilos base */
+        body {
+          margin: 0;
+          padding: 0;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          line-height: 1.6;
+          background-color: #f5f7fa;
+          color: #333;
+        }
+        
+        .email-container {
+          max-width: 600px;
+          margin: 0 auto;
+          background: #ffffff;
+          border-radius: 10px;
+          overflow: hidden;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+          background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+          padding: 30px 20px;
+          text-align: center;
+        }
+        
+        .logo {
+          max-width: 180px;
+          margin: 0 auto 15px;
+          display: block;
+        }
+        
+        h1 {
+          color: white;
+          margin: 0;
+          font-size: 28px;
+          font-weight: 600;
+        }
+        
+        .content {
+          padding: 30px;
+        }
+        
+        .welcome-gif {
+          width: 100%;
+          max-width: 400px;
+          height: auto;
+          display: block;
+          margin: 0 auto 25px;
+          border-radius: 8px;
+        }
+        
+        .credentials-box {
+          background-color: #f8f9ff;
+          border-left: 4px solid #2575fc;
+          padding: 15px 20px;
+          margin: 25px 0;
+          border-radius: 0 6px 6px 0;
+        }
+        
+        .credentials-box p {
+          margin: 8px 0;
+        }
+        
+        .highlight {
+          background-color: #e6f0ff;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-weight: 600;
+          display: inline-block;
+        }
+        
+        .btn {
+          display: inline-block;
+          background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+          color: white !important;
+          text-decoration: none;
+          padding: 14px 30px;
+          border-radius: 50px;
+          font-weight: 600;
+          margin: 25px 0;
+          text-align: center;
+          box-shadow: 0 4px 15px rgba(37, 117, 252, 0.3);
+          transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(37, 117, 252, 0.4);
+        }
+        
+        .footer {
+          text-align: center;
+          padding: 25px 20px;
+          background-color: #f5f7fa;
+          color: #6c757d;
+          font-size: 14px;
+        }
+        
+        .social-icons {
+          margin: 15px 0;
+        }
+        
+        .social-icons a {
+          display: inline-block;
+          margin: 0 8px;
+        }
+        
+        @media (max-width: 480px) {
+          .content {
+            padding: 20px;
+          }
+          
+          .header {
+            padding: 20px 15px;
+          }
+          
+          h1 {
+            font-size: 24px;
+          }
+          
+          .btn {
+            display: block;
+            margin: 20px auto;
+            width: 90%;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="email-container">
+        <div class="header">
+          <h1>¡Bienvenido, ${nombre}!</h1>
+        </div>
+        
+        <div class="content">
+          <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbDg1aGJmY3V4a3d2YzBmOWp5bWQ5dXJ1c2N3dHl0dHl0c3J4b2VnMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l378zKVk7Eh3yHoJi/giphy.gif" 
+               alt="Bienvenida animada" class="welcome-gif">
+          
+          <p>Gracias por registrarte en nuestra plataforma. Estamos encantados de tenerte con nosotros.</p>
+          
+          <div class="credentials-box">
+            <p><strong>Tus credenciales de acceso:</strong></p>
+            <p><strong>Correo:</strong> <span class="highlight">${correo}</span></p>
+            <p><strong>Contraseña temporal:</strong> <span class="highlight">${password}</span></p>
+          </div>
+          
+          <p>Por favor, usa esta contraseña para iniciar sesión y te recomendamos cambiarla en tu perfil por seguridad.</p>
+          
+          <p>Haz clic en el siguiente botón para acceder a la plataforma:</p>
+          
+          <a href="${loginUrl}" class="btn">Iniciar Sesión</a>
+          
+          <p>Si tienes problemas con el botón, copia y pega esta URL en tu navegador:</p>
+          <p><a href="${loginUrl}" style="word-break: break-all;">${loginUrl}</a></p>
+          
+          <p>¡Esperamos que disfrutes de nuestra plataforma!</p>
+        </div>
+        
+        <div class="footer">
+          <p>¿Necesitas ayuda? Contáctanos en <a href="mailto:soporte@tuempresa.com">soporte@tuempresa.com</a></p>
+          <div class="social-icons">
+            <a href="#"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" alt="Instagram" width="24"></a>
+            <a href="#"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="24"></a>
+            <a href="#"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" width="24"></a>
+          </div>
+          <p>© ${new Date().getFullYear()} Tu Empresa. Todos los derechos reservados.</p>
+          <p><small>Este es un correo automático, por favor no respondas a este mensaje.</small></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `,
+});
 
     if (emailError) {
       console.error('Error sending welcome email from API route:', emailError);

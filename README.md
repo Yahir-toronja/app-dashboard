@@ -40,3 +40,6 @@ pnpm start     # Producción
 
 ---
 Desarrollado con Next.js y TypeScript
+
+
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Yahir-toronja/app-dashboard?utm_source=oss&utm_medium=github&utm_campaign=Yahir-toronja%2Fapp-dashboard&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
