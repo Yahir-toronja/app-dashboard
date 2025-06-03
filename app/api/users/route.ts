@@ -10,6 +10,18 @@ import { api } from "@/convex/_generated/api";
 const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
+interface ClerkError {
+  code: string;
+  message: string;
+  longMessage?: string;
+}
+
+interface ErrorWithClerkErrors {
+  errors: ClerkError[];
+  message?: string;
+  status?: number;
+}
+
 export async function POST(request: Request) {
   try {
     const { nombre, correo, rol, password } = await request.json();
@@ -123,7 +135,7 @@ export async function POST(request: Request) {
 
     // Logging más detallado del error de Clerk
     if (typeof error === "object" && error !== null && "errors" in error) {
-      console.error("Clerk errors:", (error as any).errors);
+      console.error("Clerk errors:", (error as ErrorWithClerkErrors).errors);
     }
 
     let message = "Error desconocido al crear el usuario.";
