@@ -38,7 +38,7 @@ export const materia = defineTable(
 
 export const salones = defineTable(
     v.object({
-        numero: v.number(),
+        numero: v.string(),
         edificio: v.string(),
         planta: v.string()
     })
@@ -46,19 +46,17 @@ export const salones = defineTable(
 
 export const horario = defineTable(
     v.object({
-        columnas: v.string(),
+        periodo: v.string(),
     })
 );
 
 export const usuarios = defineTable({
     clerkId: v.string(), // ID de usuario de Clerk
     nombre: v.string(),
-    correo: v.string(),
-    password: v.string(), // Contraseña del usuario
+    correo: v.string(),// Contraseña del usuario
     rol: v.string(), // Nuevo campo para el rol del usuario (ej: "admin", "user", etc.)
-    estado: v.optional(v.string()), // Estado del usuario ("activo", "bloqueado")
+    estado: v.union(v.literal("activo"), v.literal("bloqueado")), // Estado del usuario ("activo", "bloqueado")
     fechaCreacion: v.optional(v.number()), // Timestamp de creación
-    fechaActualizacion: v.optional(v.number()), // Timestamp de última actualización
 })
     .index("by_clerkId", ["clerkId"]) // Índice para buscar por Clerk ID
     .index("by_correo", ["correo"]); 

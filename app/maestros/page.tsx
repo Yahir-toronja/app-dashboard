@@ -1,5 +1,4 @@
-import {TablaMaestrosExpandible} from "./tabla-maestros";
-
+import { TablaMaestros } from "@/app/maestros/tabla-maestros";
 
 export default function MaestrosPage() {
   return (
@@ -10,7 +9,7 @@ export default function MaestrosPage() {
         editarlo o eliminarlo. Para crear un nuevo maestro, usa el botón 
         Nuevo Maestro.
       </p>
-      <TablaMaestrosExpandible />
+      <TablaMaestros />
     </main>
   );
 }

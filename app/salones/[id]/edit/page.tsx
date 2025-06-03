@@ -1,51 +1,48 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
-import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useState, useEffect, use } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, Save } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { useForm } from 'react-hook-form';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-interface FormValues {
-  numero: number;
-  edificio: string;
-  planta: string;
-}
-
-export default function EditSalonPage() {
-  const params = useParams();
-  const id = params?.id as string;
-  const salonId = id as Id<"salones">;
+export default function EditarSalonPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const idSalon = id as Id<"salones">;
   const router = useRouter();
-
-  const salon = useQuery(api.salon.obtenerSalonPorId, {
-    id: salonId,
-  });
+  const salon = useQuery(api.salon.obtenerSalonPorId, { id: idSalon });
   const actualizarSalon = useMutation(api.salon.actualizarSalon);
-
-  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>();
-
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    numero: "",
+    edificio: "",
+    planta: ""
+  });
+  
+  // Cargar datos del salón cuando estén disponibles
   useEffect(() => {
     if (salon) {
-      setValue('numero', salon.numero);
-      setValue('edificio', salon.edificio);
-      setValue('planta', salon.planta);
+      setFormData({
+        numero: salon.numero,
+        edificio: salon.edificio,
+        planta: salon.planta
+      });
     }
-  }, [salon, setValue]);
-
+  }, [salon]);
+  
   if (salon === undefined) {
     return (
       <div className="container mx-auto py-10">
@@ -82,27 +79,36 @@ export default function EditSalonPage() {
           </Button>
           <h1 className="text-3xl font-bold">Salón no encontrado</h1>
         </div>
-        <p>No se pudo encontrar el salón con el ID proporcionado.</p>
+        <p>No se pudo encontrar el Salón con el ID proporcionado.</p>
       </div>
     );
   }
-
-  const onSubmit = async (data: FormValues) => {
+  
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
     try {
       await actualizarSalon({
         id: salon._id,
         datos: {
-          numero: Number(data.numero),
-          edificio: data.edificio,
-          planta: data.planta
+          numero: formData.numero,
+          edificio: formData.edificio,
+          planta: formData.planta
         }
       });
       router.push(`/salones/${id}`);
     } catch (error) {
       console.error("Error al actualizar salón:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
+  
   return (
     <div className="container mx-auto py-10">
       <div className="flex items-center gap-2 mb-6">
@@ -111,62 +117,84 @@ export default function EditSalonPage() {
         </Button>
         <h1 className="text-3xl font-bold">Editar Salón</h1>
       </div>
-
+      
       <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>Editar información del salón</CardTitle>
-        </CardHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit}>
+          <CardHeader>
+            <CardTitle className="font-semibold text-center">Modificar información del Salón {salon.numero}</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="numero">Número</Label>
-              <Input
-                id="numero"
-                type="number"
-                {...register('numero', {
-                  required: 'El número es obligatorio',
-                  valueAsNumber: true,
-                  min: { value: 1, message: 'El número debe ser mayor a 0' },
-                })}
-              />
-              {errors.numero && (
-                <p className="text-sm text-red-500">{errors.numero.message}</p>
-              )}
+              <Label htmlFor="numero">Número de Salón</Label>
+              <Select 
+                onValueChange={(value) => handleSelectChange("numero", value)}
+                value={formData.numero}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona el número de salón" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5, 6, 7].map((num) => (
+                    <SelectItem key={num} value={num.toString()}>
+                      {num}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-
+            
             <div className="space-y-2">
               <Label htmlFor="edificio">Edificio</Label>
-              <Input
-                id="edificio"
-                {...register('edificio', { required: 'El edificio es obligatorio' })}
-              />
-              {errors.edificio && (
-                <p className="text-sm text-red-500">{errors.edificio.message}</p>
-              )}
+              <Select 
+                onValueChange={(value) => handleSelectChange("edificio", value)}
+                value={formData.edificio}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona el edificio" />
+                </SelectTrigger>
+                <SelectContent>
+                  {["A", "B", "C", "D"].map((edificio) => (
+                    <SelectItem key={edificio} value={edificio}>
+                      Edificio {edificio}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-
+            
             <div className="space-y-2">
               <Label htmlFor="planta">Planta</Label>
-              <Input
-                id="planta"
-                {...register('planta', { required: 'La planta es obligatoria' })}
-              />
-              {errors.planta && (
-                <p className="text-sm text-red-500">{errors.planta.message}</p>
-              )}
+              <Select 
+                onValueChange={(value) => handleSelectChange("planta", value)}
+                value={formData.planta}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona la planta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Planta Alta">Planta Alta</SelectItem>
+                  <SelectItem value="Planta Baja">Planta Baja</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
-          <CardFooter className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
+          
+          <CardFooter className="flex justify-between">
+            <Button 
+              type="button" 
+              variant="outline" 
               onClick={() => router.back()}
               disabled={isSubmitting}
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Guardando...' : 'Guardar cambios'}
+            <Button 
+              type="submit" 
+              disabled={isSubmitting || !formData.numero || !formData.edificio || !formData.planta}
+              className="flex items-center gap-2"
+            >
+              <Save className="h-4 w-4" />
+              {isSubmitting ? "Guardando..." : "Guardar Cambios"}
             </Button>
           </CardFooter>
         </form>

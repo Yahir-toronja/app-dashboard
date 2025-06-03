@@ -1,48 +1,242 @@
 "use client";
 
-import React, { useState } from "react";
-import { useQuery } from "convex/react";
+import { useMutation, useConvex } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Plus, ChevronDown, ChevronRight } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
+import { Plus, Trash2, Edit } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useEffect } from "react";
+import { AgGridReact } from "ag-grid-react";
+import { ColDef, ICellRendererParams } from 'ag-grid-community';
+import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import { Id } from "@/convex/_generated/dataModel";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
+import { fetchQuery } from "convex/nextjs";
 
-// Definimos el tipo Calificacion para tener más claridad
-type Calificacion = {
+// Registrar los módulos de AG Grid
+ModuleRegistry.registerModules([AllCommunityModule]);
+
+// Tipo para la estructura de datos de calificaciones
+interface Calificacion {
   _id: Id<"calificaciones">;
-  _creationTime: number;
-  nota: number;
   estudianteId: Id<"estudiantes">;
   materiaId: Id<"materia">;
+  nota: number;
   semestre: string;
+  estudiante?: {
+    id: Id<"estudiantes">;
+    nombre: string;
+    matricula: string;
+  } | null;
+  materia?: {
+    id: Id<"materia">;
+    nombre: string;
+    id_m: string;
+  } | null;
+}
+
+// Componente para renderizar botones de acción
+const AccionesRenderer = (props: ICellRendererParams<Calificacion>) => {
+  const eliminarCalificacion = useMutation(api.calificaciones.eliminarCalificacion);
+  const router = useRouter();
+  const [modalEliminar, setModalEliminar] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const onEliminar = async () => {
+    try {
+      setIsDeleting(true);
+      if (!props.data) return;
+      await eliminarCalificacion({ id: props.data._id });
+      setModalEliminar(false);
+      //router.refresh(); // Forzar la recarga de la página
+    } catch (error) {
+      console.error("Error al eliminar calificación:", error);
+      alert("Error al eliminar calificación");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const onEditar = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!props.data) return;
+    router.push(`/calificaciones/${props.data._id}`);
+  };
+
+  const onClickEliminar = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setModalEliminar(true);
+  };
+
+  return (
+    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+      <Button
+        variant="outline"
+        size="sm"
+        className="p-1 h-8 w-8"
+        onClick={onEditar}
+      >
+        <Edit className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className="p-1 h-8 w-8 text-destructive hover:bg-destructive/10"
+        onClick={onClickEliminar}
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+
+      {/* Modal de confirmación para eliminar */}
+      <Dialog open={modalEliminar} onOpenChange={setModalEliminar}>
+        <DialogContent onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>¿Estás completamente seguro?</DialogTitle>
+            <DialogDescription>
+              Esta acción no se puede deshacer. La calificación será eliminada permanentemente
+              de la base de datos.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                setModalEliminar(false);
+              }}
+              disabled={isDeleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEliminar();
+              }}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Eliminando..." : "Eliminar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 };
 
-export function TablaCalificacionesExpandible() {
+export function TablaCalificaciones() {
   const router = useRouter();
-  const calificaciones = useQuery(api.calificaciones.obtenerCalificaciones) as Calificacion[] | undefined;
-  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const convex = useConvex();
+  const [calificaciones, setCalificaciones] = useState<Calificacion[] | null>(null);
+  //const calificaciones = useQuery(api.calificaciones.obtenerCalificaciones);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (calificaciones === undefined) {
-    return <div>Cargando calificaciones...</div>;
-  }
-
-  const handleVerCalificacion = (id: Id<"calificaciones">) => {
-    router.push(`/calificaciones/${id}`);
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const data = await fetchQuery(api.calificaciones.obtenerCalificaciones);
+      setCalificaciones(data);
+    } catch (err) {
+      setError("Failed to fetch data");
+      console.error("Failed to fetch initial data", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    if (convex) {
+      fetchData();
+    }
+  }, [convex]);
+
+  // Definición de columnas para AG Grid
+  const columnDefs = useMemo<ColDef<Calificacion>[]>(() => [
+    {
+      headerName: "Matrícula",
+      field: "estudiante.matricula",
+      sortable: true,
+      filter: true,
+      flex: 1
+    },
+    {
+      headerName: "Estudiante",
+      field: "estudiante.nombre",
+      sortable: true,
+      filter: true,
+      flex: 2
+    },
+    {
+      headerName: "Materia",
+      field: "materia.nombre",
+      sortable: true,
+      filter: true,
+      flex: 2
+    },
+    {
+      headerName: "Clave",
+      field: "materia.id_m",
+      sortable: true,
+      filter: true,
+      flex: 1
+    },
+    {
+      headerName: "Nota",
+      field: "nota",
+      sortable: true,
+      filter: true,
+      cellStyle: (params) => {
+        if (params.value < 6) return { color: 'red' };
+        else if (params.value >= 9) return { color: 'green' };
+        return null;
+      },
+      flex: 1
+    },
+    {
+      headerName: "Semestre",
+      field: "semestre",
+      sortable: true,
+      filter: true,
+      flex: 1
+    },
+    {
+      headerName: "Acciones",
+      field: "_id",
+      sortable: false,
+      filter: false,
+      width: 120,
+      cellRenderer: AccionesRenderer,
+      cellStyle: { padding: '2px' },
+      suppressNavigable: true,
+      suppressCellSelection: true
+    }
+  ], []);
+
+  // Configuración por defecto de AG Grid
+  const defaultColDef = useMemo(() => ({
+    resizable: true,
+  }), []);
 
   const handleCrear = () => {
     router.push("/calificaciones/create");
   };
 
-  const toggleRow = (id: string) => {
-    setExpandedRows(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
+  if (isLoading) {
+    return <div>Cargando calificaciones...</div>;
+  }
+
+  if (error) {
+    return <div>Error al cargar las calificaciones: {error}</div>;
+  }
 
   return (
     <div>
@@ -53,121 +247,19 @@ export function TablaCalificacionesExpandible() {
           Nueva Calificación
         </Button>
       </div>
-      
-      <Table>
-        <TableCaption>Lista de calificaciones registradas</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[50px]"></TableHead>
-            <TableHead>Estudiante ID</TableHead>
-            <TableHead>Materia ID</TableHead>
-            <TableHead>Semestre</TableHead>
-            <TableHead className="w-[100px]">Nota</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {calificaciones.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={5} className="text-center">
-                No hay calificaciones registradas
-              </TableCell>
-            </TableRow>
-          ) : (
-            calificaciones.map((calificacion) => (
-              <React.Fragment key={calificacion._id}>
-                <TableRow 
-                  className="cursor-pointer hover:bg-muted/50"
-                >
-                  <TableCell>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-8 w-8 p-0"
-                      onClick={() => toggleRow(calificacion._id)}
-                    >
-                      {expandedRows[calificacion._id] ? 
-                        <ChevronDown className="h-4 w-4" /> : 
-                        <ChevronRight className="h-4 w-4" />}
-                    </Button>
-                  </TableCell>
-                  <TableCell 
-                    onClick={() => handleVerCalificacion(calificacion._id)}
-                  >
-                    {calificacion.estudianteId}
-                  </TableCell>
-                  <TableCell onClick={() => handleVerCalificacion(calificacion._id)}>
-                    {calificacion.materiaId}
-                  </TableCell>
-                  <TableCell onClick={() => handleVerCalificacion(calificacion._id)}>
-                    {calificacion.semestre}
-                  </TableCell>
-                  <TableCell 
-                    className={`font-bold ${calificacion.nota >= 7 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}
-                    onClick={() => handleVerCalificacion(calificacion._id)}
-                  >
-                    {calificacion.nota}
-                  </TableCell>
-                </TableRow>
-                {expandedRows[calificacion._id] && (
-                  <TableRow key={`expanded-${calificacion._id}`}>
-                    <TableCell colSpan={5} className="p-0">
-                      <DetallesCalificacion calificacionId={calificacion._id} />
-                    </TableCell>
-                  </TableRow>
-                )}
-              </React.Fragment>
-            ))
-          )}
-        </TableBody>
-      </Table>
+
+      <div className="w-full h-[500px] ag-theme-alpine">
+        <AgGridReact
+          rowData={calificaciones}
+          columnDefs={columnDefs}
+          defaultColDef={defaultColDef}
+          pagination={true}
+          paginationPageSize={10}
+          animateRows={true}
+          rowSelection="single"
+        />
+      </div>
     </div>
   );
 }
 
-function DetallesCalificacion({ calificacionId }: { calificacionId: Id<"calificaciones"> }) {
-  // Usamos useQuery para obtener la calificación específica
-  const calificaciones = useQuery(api.calificaciones.obtenerCalificaciones) as Calificacion[] | undefined;
-  
-  if (!calificaciones) {
-    return (
-      <div className="p-4 bg-muted/30 text-foreground">
-        <p>Cargando detalles...</p>
-      </div>
-    );
-  }
-
-  // Encontramos la calificación específica
-  const calificacion = calificaciones.find(c => c._id === calificacionId);
-  
-  if (!calificacion) {
-    return (
-      <div className="p-4 bg-muted/30 text-foreground">
-        <p>No se encontró la calificación</p>
-      </div>
-    );
-  }
-
-  return (
-    <Card className="m-2 border-0 shadow-none bg-muted/30">
-      <CardContent className="p-4 text-foreground">
-        <h3 className="text-sm font-medium mb-2">Detalles de la Calificación</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div className="bg-card p-3 rounded-md shadow-sm border border-border">
-            <div className="flex flex-col gap-1">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Estado:</span>
-                <span className={`text-sm font-bold ${calificacion.nota >= 7 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {calificacion.nota >= 7 ? 'Aprobado' : 'Reprobado'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Fecha de registro:</span>
-                <span className="text-sm">{new Date(calificacion._creationTime).toLocaleDateString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}

@@ -1,85 +1,161 @@
-// convex/calificaciones.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-// Tipos para calificaciones
-export type Calificacion = {
-  nota: number;
-  estudianteId: string;
-  materiaId: string;
-  semestre: string;
-};
-
-// CREATE - Crear una nueva calificación
-export const crearCalificacion = mutation({
-  args: {
-    nota: v.number(),
-    estudianteId: v.id("estudiantes"),
-    materiaId: v.id("materia"),
-    semestre: v.string(),
-  }, 
-  handler: async (ctx, args) => {
-    // Validar que la calificación esté entre 5 y 10
-    if (args.nota < 5 || args.nota > 10) {
-      throw new Error("La calificación debe estar entre 5 y 10");
-    }
-    
-    const calificacionId = await ctx.db.insert("calificaciones", {
-      nota: args.nota,
-      estudianteId: args.estudianteId,
-      materiaId: args.materiaId,
-      semestre: args.semestre,
-    });
-    return calificacionId;
-  },
-});
-
-// READ - Obtener todas las calificaciones
+// Consulta para obtener todas las calificaciones
 export const obtenerCalificaciones = query({
   handler: async (ctx) => {
-    return await ctx.db.query("calificaciones").collect();
+    // Obtenemos todas las calificaciones
+    const calificaciones = await ctx.db.query("calificaciones").collect();
+    
+    // Para cada calificación, obtenemos los datos relacionados
+    const calificacionesConDetalles = await Promise.all(
+      calificaciones.map(async (calificacion) => {
+        const estudiante = await ctx.db.get(calificacion.estudianteId);
+        const materia = await ctx.db.get(calificacion.materiaId);
+        
+        return {
+          ...calificacion,
+          estudiante: estudiante ? {
+            id: estudiante._id,
+            nombre: estudiante.nombre,
+            matricula: estudiante.matricula
+          } : null,
+          materia: materia ? {
+            id: materia._id,
+            nombre: materia.nombre,
+            id_m: materia.id_m
+          } : null
+        };
+      })
+    );
+
+    return calificacionesConDetalles;
   },
 });
 
-// READ - Obtener calificaciones por ID de estudiante
-export const obtenerCalificacionesPorEstudiante = query({
-  args: { estudiante_id: v.id("estudiantes") },
+// Consulta para obtener una calificación por ID
+export const obtenerCalificacionPorId = query({
+  args: { id: v.id("calificaciones") },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("calificaciones")
-      .filter((q) => q.eq(q.field("estudianteId"), args.estudiante_id))
-      .collect();
+    const calificacion = await ctx.db.get(args.id);
+    
+    if (!calificacion) return null;
+    
+    // Obtenemos los datos relacionados
+    const estudiante = await ctx.db.get(calificacion.estudianteId);
+    const materia = await ctx.db.get(calificacion.materiaId);
+    
+    return {
+      ...calificacion,
+      estudiante: estudiante ? {
+        id: estudiante._id,
+        nombre: estudiante.nombre,
+        matricula: estudiante.matricula
+      } : null,
+      materia: materia ? {
+        id: materia._id,
+        nombre: materia.nombre,
+        id_m: materia.id_m
+      } : null
+    };
   },
 });
 
-// UPDATE - Actualizar una calificación
+// Mutación para crear una nueva calificación
+export const crearCalificacion = mutation({
+  args: {
+    estudianteId: v.id("estudiantes"),
+    materiaId: v.id("materia"),
+    nota: v.number(),
+    semestre: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { estudianteId, materiaId, nota, semestre } = args;
+    
+    // Opcionalmente, podríamos validar que el estudiante y la materia existen
+    const estudiante = await ctx.db.get(estudianteId);
+    const materia = await ctx.db.get(materiaId);
+    
+    if (!estudiante) {
+      throw new Error("El estudiante no existe");
+    }
+    
+    if (!materia) {
+      throw new Error("La materia no existe");
+    }
+    
+    // Validación de la nota (por ejemplo, entre 0 y 10)
+    if (nota < 0 || nota > 10) {
+      throw new Error("La nota debe estar entre 0 y 10");
+    }
+    
+    return await ctx.db.insert("calificaciones", {
+      estudianteId,
+      materiaId,
+      nota,
+      semestre,
+    });
+  },
+});
+
+// Mutación para actualizar una calificación existente
 export const actualizarCalificacion = mutation({
   args: {
     id: v.id("calificaciones"),
-    datos: v.object({
-      nota: v.optional(v.number()),
-      materiaId: v.optional(v.id("materia")),
-      semestre: v.optional(v.string()),
-    }),
+    estudianteId: v.id("estudiantes"),
+    materiaId: v.id("materia"),
+    nota: v.number(),
+    semestre: v.string(),
   },
   handler: async (ctx, args) => {
-    const { id, datos } = args;
+    const { id, estudianteId, materiaId, nota, semestre } = args;
     
-    // Validar que la calificación esté entre 5 y 10 si se está actualizando
-    if (datos.nota !== undefined && (datos.nota < 5 || datos.nota > 10)) {
-      throw new Error("La calificación debe estar entre 5 y 10");
+    // Validaciones
+    const estudiante = await ctx.db.get(estudianteId);
+    const materia = await ctx.db.get(materiaId);
+    
+    if (!estudiante) {
+      throw new Error("El estudiante no existe");
     }
     
-    await ctx.db.patch(id, datos);
-    return id;
+    if (!materia) {
+      throw new Error("La materia no existe");
+    }
+    
+    // Validación de la nota
+    if (nota < 0 || nota > 10) {
+      throw new Error("La nota debe estar entre 0 y 10");
+    }
+    
+    return await ctx.db.patch(id, {
+      estudianteId,
+      materiaId,
+      nota,
+      semestre,
+    });
   },
 });
 
-// DELETE - Eliminar una calificación
+// Mutación para eliminar una calificación
 export const eliminarCalificacion = mutation({
-  args: { id: v.id("calificaciones") },
+  args: {
+    id: v.id("calificaciones"),
+  },
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.id);
-    return args.id;
+    return await ctx.db.delete(args.id);
+  },
+});
+
+// Consulta para obtener todos los estudiantes (para selector)
+export const obtenerEstudiantes = query({
+  handler: async (ctx) => {
+    return await ctx.db.query("estudiantes").collect();
+  },
+});
+
+// Consulta para obtener todas las materia (para selector)
+export const obtenerMaterias = query({
+  handler: async (ctx) => {
+    return await ctx.db.query("materia").collect();
   },
 });

@@ -1,420 +1,364 @@
-import { NextRequest, NextResponse } from "next/server";
+// app/api/users/route.ts
+"use server";
+
+import { NextResponse } from "next/server";
+import { createClerkClient } from "@clerk/backend";
 import { Resend } from "resend";
-import { clerkClient } from "@clerk/nextjs/server";
+import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
-import { fetchMutation, fetchQuery } from "convex/nextjs";
-import { Id } from "@/convex/_generated/dataModel";
 
-// Inicializar Resend para envío de emails
-const resend = new Resend(process.env.RESEND_API_KEY);
+const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
+const resend = new Resend(process.env.RESEND_API_KEY!);
 
-// Interfaces para tipar mejor el código
-interface ClerkError {
-  errors?: Array<{
-    code: string;
-    message: string;
-  }>;
-  status?: number;
-}
-
-interface ConvexUpdates {
-  nombre?: string;
-  correo?: string;
-  password?: string;
-  rol?: string;
-  estado?: string;
-}
-
-// Función para validar formato de email
-function isValidEmail(email: string) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
-
-// Función para validar contraseña
-function isValidPassword(password: string) {
-  return password.length >= 8; // Mínimo 8 caracteres
-}
-
-// Función para enviar email de bienvenida
-async function sendWelcomeEmail(email: string, nombre: string, password: string) {
+export async function POST(request: Request) {
   try {
-    await resend.emails.send({
-      from: "noreply@example.com", // Cambiar por dominio propio si está configurado
-      to: email,
-      subject: "Bienvenido a la plataforma",
+    const { nombre, correo, rol, password } = await request.json();
+
+    // Validaciones más estrictas
+    if (!password || password.length < 8) {
+      return NextResponse.json(
+        { success: false, error: "La contraseña debe tener al menos 8 caracteres." },
+        { status: 400 }
+      );
+    }
+
+    // Validar formato de email
+    if (!correo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+      return NextResponse.json(
+        { success: false, error: "Formato de correo electrónico inválido." },
+        { status: 400 }
+      );
+    }
+
+    // Validar que la contraseña tenga al menos una mayúscula, una minúscula y un número
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password)) {
+      return NextResponse.json(
+        { success: false, error: "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número." },
+        { status: 400 }
+      );
+    }
+
+    // 1. Validar unicidad del correo en Clerk
+    const existingClerkUsers = await clerk.users.getUserList({
+      emailAddress: [correo],
+    });
+
+    if (existingClerkUsers.data.length > 0) {
+      return NextResponse.json(
+        { success: false, error: "El correo ya existe en Clerk." },
+        { status: 409 }
+      );
+    }
+
+    // 2. Crear usuario en Clerk con formato correcto
+    console.log('Intentando crear usuario con:', { nombre, correo, passwordLength: password.length });
+    
+    // Generar un username único basado en el nombre y un número aleatorio
+    const baseUsername = nombre.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+    const randomSuffix = Math.floor(Math.random() * 10000);
+    const username = `${baseUsername}${randomSuffix}`;
+    
+    const clerkUser = await clerk.users.createUser({
+      firstName: nombre,
+      emailAddress: [correo],
+      username: username, // Agregar el username requerido
+      password: password,
+    });
+
+    // 3. Almacenar en Convex
+    const convexResult = await fetchMutation(api.functions.user.saveUser, {
+      clerkUserId: clerkUser.id,
+      nombre,
+      correo,
+      rol,
+    });
+
+    // 4. Enviar correo con Resend
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://yahir.korian-labs.net/';
+    const loginUrl = `${baseUrl}/sign-in`;
+
+    const { data: emailResult, error: emailError } = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL!,
+      to: correo,
+      subject: "¡Bienvenido! Tus credenciales de acceso a la plataforma",
       html: `
-        <h1>Bienvenido, ${nombre}!</h1>
-        <p>Tu cuenta ha sido creada exitosamente.</p>
-        <p>Tus credenciales temporales son:</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Contraseña:</strong> ${password}</p>
-        <p>Te recomendamos cambiar tu contraseña después del primer inicio de sesión.</p>
+        <h1>Hola, ${nombre}!</h1>
+        <p>Gracias por registrarte en nuestra plataforma.</p>
+        <p>Tus credenciales de acceso son:</p>
+        <p><strong>Correo:</strong> ${correo}</p>
+        <p><strong>Contraseña temporal:</strong> <code>${password}</code></p>
+        <p>Por favor, usa esta contraseña para iniciar sesión y te recomendamos cambiarla en tu perfil por seguridad.</p>
+        <p>Haz clic aquí para iniciar sesión:</p>
+        <a href="${loginUrl}" style="padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">
+          Iniciar Sesión
+        </a>
+        <p>Si tienes problemas, copia y pega esta URL en tu navegador: <br/> ${loginUrl}</p>
+        <p>Atentamente,<br/>El Equipo</p>
       `,
     });
-    console.log("Email de bienvenida enviado a", email);
-    return true;
-  } catch (error) {
-    console.error("Error al enviar email de bienvenida:", error);
-    return false;
+
+    if (emailError) {
+      console.error('Error sending welcome email from API route:', emailError);
+      return NextResponse.json(
+        {
+          success: true,
+          clerkUserId: clerkUser.id,
+          convexUserId: convexResult.userId,
+          message: `Usuario creado, pero hubo un problema al enviar el correo de bienvenida: ${emailError.message}`,
+        },
+        { status: 200 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      clerkUserId: clerkUser.id,
+      convexUserId: convexResult.userId,
+      emailId: emailResult?.id,
+      message: "Usuario creado y credenciales enviadas por correo.",
+    });
+
+  } catch (error: unknown) {
+    console.error("Full error creating user:", error);
+
+    // Logging más detallado del error de Clerk
+    if (typeof error === "object" && error !== null && "errors" in error) {
+      console.error("Clerk errors:", (error as any).errors);
+    }
+
+    let message = "Error desconocido al crear el usuario.";
+    let status = 500;
+
+    if (typeof error === "object" && error !== null) {
+      if ("message" in error && typeof (error as { message?: unknown }).message === "string") {
+        message = (error as { message: string }).message;
+      }
+      if ("status" in error && typeof (error as { status?: unknown }).status === "number") {
+        status = (error as { status: number }).status;
+      }
+      if ("errors" in error && Array.isArray((error as { errors?: unknown }).errors)) {
+        const clerkErrors = (error as { errors: Array<{ code: string; message: string; longMessage?: string }> }).errors;
+        if (clerkErrors.length > 0) {
+          console.error("Detailed Clerk error:", clerkErrors[0]);
+          if (clerkErrors[0].code === 'form_identifier_exists') {
+            message = 'El correo electrónico ya está en uso por otro usuario en Clerk.';
+            status = 409;
+          } else if (clerkErrors[0].code === 'form_password_pwned') {
+            message = 'La contraseña es muy común. Por favor, usa una contraseña más segura.';
+            status = 400;
+          } else if (clerkErrors[0].code === 'form_password_length_too_short') {
+            message = 'La contraseña es muy corta. Debe tener al menos 8 caracteres.';
+            status = 400;
+          } else if (clerkErrors[0].code === 'form_password_validation_failed') {
+            message = 'La contraseña no cumple con los requisitos de seguridad. Debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.';
+            status = 400;
+          } else {
+            message = `Error de Clerk: ${clerkErrors[0].longMessage || clerkErrors[0].message}`;
+            status = 400;
+          }
+        }
+      }
+    }
+    return NextResponse.json({ success: false, error: message }, { status });
   }
 }
 
-// POST: Crear nuevo usuario
-export async function POST(request: NextRequest) {
+export async function PATCH(request: Request) {
   try {
-    const body = await request.json();
-    const { nombre, correo, rol, password } = body;
+    const { id, clerkUserId, nombre, correo, rol, estado } = await request.json();
 
     // Validaciones básicas
-    if (!nombre || !correo || !rol || !password) {
+    if (!id || !clerkUserId) {
       return NextResponse.json(
-        { error: "Faltan campos requeridos" },
+        { error: "Missing required fields (Convex ID or Clerk ID)" },
         { status: 400 }
       );
     }
 
-    if (!isValidEmail(correo)) {
-      return NextResponse.json(
-        { error: "Formato de correo inválido" },
-        { status: 400 }
-      );
+    // Obtener usuario actual de Clerk para comparar correos
+    const currentUser = await clerk.users.getUser(clerkUserId);
+    const currentPrimaryEmail = currentUser.emailAddresses.find(
+      e => e.id === currentUser.primaryEmailAddressId
+    );
+    const currentPrimaryEmailAddress = currentPrimaryEmail?.emailAddress;
+
+    const updatesClerk: { firstName?: string; primaryEmailAddressID?: string; } = {};
+    const updatesConvex: { nombre?: string; correo?: string; estado?: "activo" | "bloqueado"; rol?: string; } = {};
+
+    let newEmailCreatedId: string | null = null;
+
+    // 1. Manejar actualización de Nombre
+    if (nombre !== undefined && nombre !== currentUser.firstName) {
+      updatesClerk.firstName = nombre;
+      updatesConvex.nombre = nombre;
     }
 
-    if (!isValidPassword(password)) {
-      return NextResponse.json(
-        { error: "La contraseña debe tener al menos 8 caracteres" },
-        { status: 400 }
-      );
-    }
+    // 2. Manejar actualización de Correo Electrónico
+    if (correo !== undefined && correo !== currentPrimaryEmailAddress) {
+      // Validar formato de correo
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+        return NextResponse.json(
+          { success: false, error: "Formato de correo electrónico inválido." },
+          { status: 400 }
+        );
+      }
 
-    // Inicializar cliente de Clerk con await
-    const clerk = await clerkClient();
-
-    // Verificar si el correo ya existe en Clerk
-    try {
-      const existingUsers = await clerk.users.getUserList({
+      // Verificar si el nuevo correo ya está en uso por otro usuario en Clerk
+      const { data: existingUsersWithNewEmail } = await clerk.users.getUserList({
         emailAddress: [correo],
       });
 
-      if (existingUsers.data.length > 0) {
+      if (
+        existingUsersWithNewEmail.length > 0 &&
+        existingUsersWithNewEmail[0].id !== clerkUserId
+      ) {
         return NextResponse.json(
-          { error: "El correo electrónico ya está registrado" },
+          { success: false, error: "Este correo ya está en uso por otro usuario." },
           { status: 409 }
         );
       }
-    } catch (error) {
-      console.error("Error al verificar usuario en Clerk:", error);
-      return NextResponse.json(
-        { error: "Error al verificar usuario" },
-        { status: 500 }
-      );
-    }
 
-    // Crear usuario en Clerk
-    let clerkUser;
-    try {
-      clerkUser = await clerk.users.createUser({
-        emailAddress: [correo],
-        password,
-        firstName: nombre,
-        lastName: "",
-      });
-    } catch (error) {
-      console.error("Error al crear usuario en Clerk:", error);
+      // Si el correo ya existe como dirección secundaria del usuario, solo lo hacemos primario
+      const existingEmailAddressInClerk = currentUser.emailAddresses?.find(ea => ea.emailAddress === correo);
 
-      // Manejar errores específicos de Clerk
-      const clerkError = error as ClerkError;
-      if (clerkError.errors && clerkError.errors.length > 0) {
-        const specificError = clerkError.errors[0];
-        if (specificError.code === "form_identifier_exists") {
-          return NextResponse.json(
-            { error: "El correo electrónico ya está registrado" },
-            { status: 409 }
-          );
-        }
+      if (existingEmailAddressInClerk) {
+        // Si ya existe, lo establecemos como primario
+        await clerk.emailAddresses.updateEmailAddress(existingEmailAddressInClerk.id, {
+          verified: true,
+          primary: true,
+        });
+        updatesClerk.primaryEmailAddressID = existingEmailAddressInClerk.id;
+        newEmailCreatedId = existingEmailAddressInClerk.id;
+      } else {
+        // Si no existe, la creamos
+        const newEmailObject = await clerk.emailAddresses.createEmailAddress({
+          userId: clerkUserId,
+          emailAddress: correo,
+        });
+        newEmailCreatedId = newEmailObject.id;
+
+        // Marcar como verificada y primaria inmediatamente
+        await clerk.emailAddresses.updateEmailAddress(newEmailObject.id, {
+          verified: true,
+          primary: true,
+        });
+        updatesClerk.primaryEmailAddressID = newEmailObject.id;
       }
 
-      return NextResponse.json(
-        { error: "Error al crear usuario en Clerk" },
-        { status: 500 }
-      );
-    }
-
-    // Guardar usuario en Convex
-    try {
-      await fetchMutation(api.functions.user.saveUser, {
-        clerkUserId: clerkUser.id,
-        nombre,
-        correo,
-        password, // Guardamos la contraseña para poder incluirla en el email
-        rol,
-      });
-    } catch (error) {
-      console.error("Error al guardar usuario en Convex:", error);
-
-      // Intentar eliminar el usuario de Clerk si falla Convex
-      try {
-        await clerk.users.deleteUser(clerkUser.id);
-      } catch (deleteError) {
-        console.error(
-          "Error al eliminar usuario de Clerk después de fallo en Convex:",
-          deleteError
-        );
+      // Eliminar el correo anterior si es diferente y existía
+      if (currentPrimaryEmail && currentPrimaryEmail.id !== newEmailCreatedId) {
+        await clerk.emailAddresses.deleteEmailAddress(currentPrimaryEmail.id);
       }
 
-      return NextResponse.json(
-        { error: "Error al guardar usuario en la base de datos" },
-        { status: 500 }
-      );
+      updatesConvex.correo = correo;
     }
 
-    // Enviar email de bienvenida
-    await sendWelcomeEmail(correo, nombre, password);
-
-    return NextResponse.json(
-      { message: "Usuario creado exitosamente", userId: clerkUser.id },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error("Error general al crear usuario:", error);
-    return NextResponse.json(
-      { error: "Error al procesar la solicitud" },
-      { status: 500 }
-    );
-  }
-}
-
-// PATCH: Actualizar usuario existente
-export async function PATCH(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { id, clerkId, nombre, correo, rol, password, estado } = body;
-
-    if (!id || !clerkId) {
-      return NextResponse.json(
-        { error: "Se requiere ID de usuario" },
-        { status: 400 }
-      );
+    // 3. Manejar actualización de Rol
+    if (rol !== undefined) {
+      updatesConvex.rol = rol;
     }
 
-    // Inicializar cliente de Clerk con await
-    const clerk = await clerkClient();
+    // 4. Manejar actualización de Estado
+    if (estado !== undefined) {
+      updatesConvex.estado = estado;
+    }
 
-    // Obtener usuario actual de Convex para comparaciones
-    const currentUser = await fetchQuery(api.functions.user.getUsuarioPorClerkId, {
-      clerkId,
+    // Realizar actualizaciones en Clerk
+    if (Object.keys(updatesClerk).length > 0) {
+      await clerk.users.updateUser(clerkUserId, updatesClerk);
+    }
+
+    // Realizar actualizaciones en Convex
+    if (Object.keys(updatesConvex).length > 0) {
+      await fetchMutation(api.functions.user.updateUser, {
+        id,
+        ...updatesConvex,
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Usuario actualizado exitosamente.",
     });
 
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: "Usuario no encontrado" },
-        { status: 404 }
-      );
-    }
+  } catch (error: unknown) {
+    console.error("Full error updating user:", error);
 
-    // Preparar actualizaciones para Convex
-    const convexUpdates: ConvexUpdates = {};
-    
-    // Actualizar nombre si se proporciona
-    if (nombre !== undefined) {
-      convexUpdates.nombre = nombre;
-    }
+    let message = "Error desconocido al actualizar el usuario.";
+    let status = 500;
+    let clerkTraceId = "";
 
-    // Actualizar rol si se proporciona
-    if (rol !== undefined) {
-      convexUpdates.rol = rol;
-    }
+    if (typeof error === "object" && error !== null) {
+      if ("message" in error && typeof (error as { message?: unknown }).message === "string") {
+        message = (error as { message: string }).message;
+      }
+      if ("status" in error && typeof (error as { status?: unknown }).status === "number") {
+        status = (error as { status: number }).status;
+      }
+      if ("clerkTraceId" in error && typeof (error as { clerkTraceId?: unknown }).clerkTraceId === "string") {
+        clerkTraceId = (error as { clerkTraceId: string }).clerkTraceId;
+      }
 
-    // Actualizar estado si se proporciona (bloqueo/desbloqueo)
-    if (estado !== undefined) {
-      convexUpdates.estado = estado;
-      
-      // Si el usuario está bloqueado, también bloquearlo en Clerk
-      try {
-        if (estado === "bloqueado") {
-          await clerk.users.updateUser(clerkId, {
-            publicMetadata: { blocked: true },
-          });
-        } else if (estado === "activo") {
-          await clerk.users.updateUser(clerkId, {
-            publicMetadata: { blocked: false },
-          });
+      if ("errors" in error && Array.isArray((error as { errors?: unknown }).errors)) {
+        const clerkErrors = (error as { errors: Array<{ code: string; message: string }> }).errors;
+        if (clerkErrors.length > 0) {
+          if (clerkErrors[0].code === 'form_identifier_exists') {
+            message = 'El nuevo correo electrónico ya está en uso por otro usuario en Clerk.';
+            status = 409;
+          } else {
+            message = `Clerk Error: ${clerkErrors[0].message}`;
+            status = 400;
+          }
         }
-      } catch (error) {
-        console.error("Error al actualizar estado en Clerk:", error);
-        return NextResponse.json(
-          { error: "Error al actualizar estado del usuario en Clerk" },
-          { status: 500 }
-        );
-      }
-    }
-
-    // Actualizar correo si se proporciona
-    if (correo !== undefined && correo !== currentUser.correo) {
-      // Validar formato de correo
-      if (!isValidEmail(correo)) {
-        return NextResponse.json(
-          { error: "Formato de correo inválido" },
-          { status: 400 }
-        );
-      }
-
-      // Verificar si el nuevo correo ya existe en Clerk
-      try {
-        const existingUsers = await clerk.users.getUserList({
-          emailAddress: [correo],
-        });
-
-        const userWithSameEmail = existingUsers.data.find(
-          (user: { id: string }) => user.id !== clerkId
-        );
-
-        if (userWithSameEmail) {
-          return NextResponse.json(
-            { error: "El correo electrónico ya está registrado" },
-            { status: 409 }
-          );
-        }
-      } catch (error) {
-        console.error("Error al verificar correo en Clerk:", error);
-        return NextResponse.json(
-          { error: "Error al verificar correo" },
-          { status: 500 }
-        );
-      }
-
-      // Actualizar correo en Clerk
-      try {
-        // Crear nueva dirección de correo
-        await clerk.emailAddresses.createEmailAddress({
-          userId: clerkId,
-          emailAddress: correo,
-          verified: true,
-          primary: true
-        });
-        
-        // Añadir correo a las actualizaciones de Convex
-        convexUpdates.correo = correo;
-      } catch (error) {
-        console.error("Error al actualizar correo en Clerk:", error);
-        return NextResponse.json(
-          { error: "Error al actualizar correo en Clerk" },
-          { status: 500 }
-        );
-      }
-    }
-
-    // Actualizar contraseña si se proporciona
-    if (password !== undefined && password.trim() !== "") {
-      // Validar contraseña
-      if (!isValidPassword(password)) {
-        return NextResponse.json(
-          { error: "La contraseña debe tener al menos 8 caracteres" },
-          { status: 400 }
-        );
-      }
-
-      // Actualizar contraseña en Clerk
-      try {
-        await clerk.users.updateUser(clerkId, {
-          password,
-        });
-
-        // Añadir contraseña a las actualizaciones de Convex
-        convexUpdates.password = password;
-      } catch (error) {
-        console.error("Error al actualizar contraseña en Clerk:", error);
-        return NextResponse.json(
-          { error: "Error al actualizar contraseña en Clerk" },
-          { status: 500 }
-        );
-      }
-    }
-
-    // Aplicar actualizaciones en Convex si hay cambios
-    if (Object.keys(convexUpdates).length > 0) {
-      try {
-        await fetchMutation(api.functions.user.updateUser, {
-          id: id as Id<"usuarios">,
-          ...convexUpdates,
-        });
-      } catch (error) {
-        console.error("Error al actualizar usuario en Convex:", error);
-        return NextResponse.json(
-          { error: "Error al actualizar usuario en la base de datos" },
-          { status: 500 }
-        );
       }
     }
 
     return NextResponse.json(
-      { message: "Usuario actualizado exitosamente" },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("Error general al actualizar usuario:", error);
-    return NextResponse.json(
-      { error: "Error al procesar la solicitud" },
-      { status: 500 }
+      { success: false, error: message, clerkTraceId },
+      { status }
     );
   }
 }
 
-// DELETE: Eliminar usuario
-export async function DELETE(request: NextRequest) {
+export async function DELETE(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-    const clerkId = searchParams.get("clerkId");
+    const { clerkUserId, convexUserId } = await request.json();
 
-    if (!id || !clerkId) {
-      return NextResponse.json(
-        { error: "Se requieren ID de usuario" },
-        { status: 400 }
-      );
+    if (!clerkUserId || !convexUserId) {
+        return NextResponse.json({ error: "Missing Clerk ID or Convex ID" }, { status: 400 });
     }
 
-    // Inicializar cliente de Clerk con await
-    const clerk = await clerkClient();
+    // 1. Eliminar usuario en Clerk
+    await clerk.users.deleteUser(clerkUserId);
 
-    // Eliminar usuario de Clerk
-    try {
-      await clerk.users.deleteUser(clerkId);
-    } catch (error) {
-      // Si el error es que el usuario no existe en Clerk, continuamos con la eliminación en Convex
-      const clerkError = error as ClerkError;
-      if (clerkError.status !== 404) {
-        console.error("Error al eliminar usuario de Clerk:", error);
-        return NextResponse.json(
-          { error: "Error al eliminar usuario de Clerk" },
-          { status: 500 }
-        );
+    // 2. Eliminar usuario en Convex
+    await fetchMutation(api.functions.user.deleteUser, {
+      id: convexUserId,
+    });
+
+    return NextResponse.json({ success: true, message: "Usuario eliminado correctamente" });
+  } catch (error: unknown) {
+    console.error("Error eliminando usuario:", error);
+
+    let message = "Error desconocido al eliminar el usuario.";
+    let status = 500;
+
+    if (typeof error === "object" && error !== null) {
+      if ("message" in error && typeof (error as { message?: unknown }).message === "string") {
+        message = (error as { message: string }).message;
+      }
+      if ("status" in error && typeof (error as { status?: unknown }).status === "number") {
+        status = (error as { status: number }).status;
+      }
+      if ("errors" in error && Array.isArray((error as { errors?: unknown }).errors)) {
+        const clerkErrors = (error as { errors: Array<{ code: string; message: string }> }).errors;
+        if (clerkErrors.length > 0) {
+            message = `Clerk Error: ${clerkErrors[0].message}`;
+            status = 400;
+        }
       }
     }
 
-    // Eliminar usuario de Convex
-    try {
-      await fetchMutation(api.functions.user.deleteUser, {
-        id: id as Id<"usuarios">,
-      });
-    } catch (error) {
-      console.error("Error al eliminar usuario de Convex:", error);
-      return NextResponse.json(
-        { error: "Error al eliminar usuario de la base de datos" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json(
-      { message: "Usuario eliminado exitosamente" },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("Error general al eliminar usuario:", error);
-    return NextResponse.json(
-      { error: "Error al procesar la solicitud" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: message }, { status });
   }
 }

@@ -5,14 +5,8 @@ import { ConvexError } from 'convex/values';
 import { defineTable } from 'convex/server';
 import { Doc, Id } from './_generated/dataModel';
 
-// Definimos la tabla de usuarios directamente en este archivo
-export const usuarios = defineTable({
-  clerkId: v.string(), // ID de usuario de Clerk
-  nombre: v.string(),
-  correo: v.string(),
-  password: v.string(), // Contraseña del usuario
-  rol: v.string(), // Nuevo campo para el rol del usuario (ej: "admin", "user", etc.)
-});
+// La tabla de usuarios ahora se define en schema.ts
+// Aquí solo usamos la definición importada
 
 // CREATE - Crear un nuevo usuario
 export const createUsuario = mutation({
@@ -21,7 +15,6 @@ export const createUsuario = mutation({
     clerkId: v.string(),
     nombre: v.string(),
     correo: v.string(),
-    password: v.string(),
     rol: v.string(),
   },
   // La función para crear un usuario
@@ -50,8 +43,9 @@ export const createUsuario = mutation({
       clerkId: args.clerkId,
       nombre: args.nombre,
       correo: args.correo,
-      password: args.password,
       rol: args.rol,
+      estado: "activo", // Por defecto, el usuario está activo
+      fechaCreacion: Date.now(), // Añadimos la fecha de creación
     });
     
     return {
@@ -59,8 +53,9 @@ export const createUsuario = mutation({
       clerkId: args.clerkId,
       nombre: args.nombre,
       correo: args.correo,
-      password: args.password,
       rol: args.rol,
+      estado: "activo",
+      fechaCreacion: Date.now(),
     };
   }
 });
@@ -131,8 +126,9 @@ export const updateUsuario = mutation({
     id: v.id("usuarios"),
     nombre: v.optional(v.string()),
     correo: v.optional(v.string()),
-    password: v.optional(v.string()),
     rol: v.optional(v.string()),
+    estado: v.optional(v.union(v.literal("activo"), v.literal("bloqueado"))),
+    fechaCreacion: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     // Verificamos que el usuario exista
@@ -159,8 +155,9 @@ export const updateUsuario = mutation({
     
     if (args.nombre !== undefined) fieldsToUpdate.nombre = args.nombre;
     if (args.correo !== undefined) fieldsToUpdate.correo = args.correo;
-    if (args.password !== undefined) fieldsToUpdate.password = args.password;
     if (args.rol !== undefined) fieldsToUpdate.rol = args.rol;
+    if (args.estado !== undefined) fieldsToUpdate.estado = args.estado;
+    if (args.fechaCreacion !== undefined) fieldsToUpdate.fechaCreacion = args.fechaCreacion;
     
     // Actualizamos el usuario
     await ctx.db.patch(args.id, fieldsToUpdate);

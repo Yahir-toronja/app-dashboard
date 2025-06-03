@@ -7,7 +7,7 @@
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import Link from "next/link";
 
-const APP_TITLE = "Escuela" as const;
+const APP_TITLE = "Mi Escuela padre bol" as const;
 
 export const Navbar: React.FC = () => {
   return (

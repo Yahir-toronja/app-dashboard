@@ -12,7 +12,7 @@ export type Salon = {
 // CREATE - Crear un nuevo salón
 export const crearSalon = mutation({
   args: {
-    numero: v.number(),
+    numero: v.string(),
     edificio: v.string(),
     planta: v.string(),
   },
@@ -57,7 +57,7 @@ export const actualizarSalon = mutation({
   args: {
     id: v.id("salones"),
     datos: v.object({
-      numero: v.optional(v.number()),
+      numero: v.optional(v.string()),
       edificio: v.optional(v.string()),
       planta: v.optional(v.string()),
     }),

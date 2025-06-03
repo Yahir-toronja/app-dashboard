@@ -1,4 +1,4 @@
-import { TablaEstudiantesExpandible } from "./tabla-estudiantes-expandible";
+import { TablaEstudiantes } from "./tabla-estudiantes";
 
 export default function EstudiantesPage() {
   return (
@@ -9,7 +9,7 @@ export default function EstudiantesPage() {
         editarlo o eliminarlo. Para crear un nuevo estudiante, usa el botón 
         Nuevo Estudiante.
       </p>
-      <TablaEstudiantesExpandible />
+      <TablaEstudiantes />
     </main>
   );
 }

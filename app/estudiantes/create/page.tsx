@@ -38,11 +38,7 @@ export default function CrearEstudiantePage() {
         setIsSubmitting(true);
 
         try {
-            await crearEstudiante({
-                matricula: formData.matricula,
-                nombre: formData.nombre,
-                correo: formData.correo
-            });
+            await crearEstudiante(formData);
             router.push("/estudiantes");
         } catch (error) {
             console.error("Error al crear estudiante:", error);
@@ -72,10 +68,10 @@ export default function CrearEstudiantePage() {
 
                     <CardContent className="grid grid-cols-1 gap-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="matricula">Número de Matrícula</Label>
+                            <Label htmlFor="numMatricula">Número de Matrícula</Label>
                             <Input
-                                id="matricula"
-                                name="matricula"
+                                id="numMatricula"
+                                name="numMatricula"
                                 value={formData.matricula}
                                 onChange={handleChange}
                                 placeholder="Ej: A12345"

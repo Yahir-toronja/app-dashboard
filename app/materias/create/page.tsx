@@ -29,10 +29,7 @@ export default function CrearMateriaPage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ 
-            ...prev, 
-            [name]: value 
-        }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -40,10 +37,7 @@ export default function CrearMateriaPage() {
         setIsSubmitting(true);
 
         try {
-            await crearMateria({
-                id_m: formData.id_m,
-                nombre: formData.nombre
-            });
+            await crearMateria(formData);
             router.push("/materias");
         } catch (error) {
             console.error("Error al crear materia:", error);
@@ -73,13 +67,13 @@ export default function CrearMateriaPage() {
 
                     <CardContent className="grid grid-cols-1 gap-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="id_m">Código de la Materia</Label>
+                            <Label htmlFor="id_m">Identificador</Label>
                             <Input
                                 id="id_m"
                                 name="id_m"
                                 value={formData.id_m}
                                 onChange={handleChange}
-                                placeholder="Ej: MAT101"
+                                placeholder="Ej: BIO, MAT, FIS"
                                 required
                             />
                         </div>
@@ -95,8 +89,6 @@ export default function CrearMateriaPage() {
                                 required
                             />
                         </div>
-
-
                     </CardContent>
 
                     <CardFooter className="flex flex-col sm:flex-row justify-between gap-4 mt-4">
@@ -120,5 +112,6 @@ export default function CrearMateriaPage() {
                 </form>
             </Card>
         </div>
+
     );
 }

@@ -15,8 +15,8 @@ export function TablaEstudiantes() {
     return <div>Cargando estudiantes...</div>;
   }
 
-  const handleVerEstudiante = (matricula: string) => {
-    router.push(`/estudiantes/${matricula}`);
+  const handleVerEstudiante = (id: string) => {
+    router.push(`/estudiantes/${id}`);
   };
 
   const handleCrear = () => {

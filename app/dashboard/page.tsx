@@ -5,11 +5,6 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 
-// Estos metadatos serán ignorados por Next.js, se deben mover a un archivo metadata.ts o usar 
-// la API generateMetadata si realmente se necesitan
-// export const iframeHeight = "800px"
-// export const description = "A sidebar with a header and a search form."
-
 export default function Page() {
   return (
     <div className="[--header-height:calc(--spacing(14))]">

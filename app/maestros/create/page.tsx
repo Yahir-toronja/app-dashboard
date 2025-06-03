@@ -21,7 +21,7 @@ export default function CrearMaestroPage() {
     const crearMaestro = useMutation(api.maestros.crearMaestro);
 
     const [formData, setFormData] = useState({
-        n_empleado: "",
+        n_empleado: "", // Corregido: cambié "n_empelado" por "n_empleado"
         nombre: "",
         correo: "",
     });
@@ -38,11 +38,7 @@ export default function CrearMaestroPage() {
         setIsSubmitting(true);
 
         try {
-            await crearMaestro({
-                n_empleado: formData.n_empleado,
-                nombre: formData.nombre,
-                correo: formData.correo
-            });
+            await crearMaestro(formData);
             router.push("/maestros");
         } catch (error) {
             console.error("Error al crear maestro:", error);
@@ -78,7 +74,7 @@ export default function CrearMaestroPage() {
                                 name="n_empleado"
                                 value={formData.n_empleado}
                                 onChange={handleChange}
-                                placeholder="Ej: M12345"
+                                placeholder="Ej: A12345"
                                 required
                             />
                         </div>
@@ -130,5 +126,6 @@ export default function CrearMaestroPage() {
                 </form>
             </Card>
         </div>
+
     );
 }

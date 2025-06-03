@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
     Card,
     CardContent,
@@ -15,6 +14,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { ArrowLeft } from "lucide-react";
 import {
     Select,
     SelectContent,
@@ -22,35 +22,37 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft } from "lucide-react";
+import { Id } from "@/convex/_generated/dataModel";
 
 export default function CrearCalificacionPage() {
     const router = useRouter();
     const crearCalificacion = useMutation(api.calificaciones.crearCalificacion);
-    const materias = useQuery(api.materia.obtenerMaterias) || [];
+    
+    // Obtener listas de estudiantes y materias para los selectores
+    const estudiantes = useQuery(api.calificaciones.obtenerEstudiantes) || [];
+    const materias = useQuery(api.calificaciones.obtenerMaterias) || [];
 
     const [formData, setFormData] = useState({
-        estudianteId: "" as unknown as Id<"estudiantes">,
-        materiaId: "" as unknown as Id<"materia">,
-        nota: 0,
+        estudianteId: "",
+        materiaId: "",
+        nota: "",
         semestre: "",
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ 
-            ...prev, 
-            [name]: name === "nota" ? Number(value) : value 
-        }));
-    };
+    // Lista de semestres para el selector (ejemplo)
+    const semestres = [
+        "2024-1", "2024-2", "2025-1", "2025-2"
+    ];
 
     const handleSelectChange = (name: string, value: string) => {
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value
-        }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -59,18 +61,36 @@ export default function CrearCalificacionPage() {
 
         try {
             await crearCalificacion({
-                estudianteId: formData.estudianteId,
-                materiaId: formData.materiaId,
-                nota: formData.nota,
-                semestre: formData.semestre
+                estudianteId: formData.estudianteId as Id<"estudiantes">,
+                materiaId: formData.materiaId as Id<"materia">,
+                nota: parseFloat(formData.nota),
+                semestre: formData.semestre,
             });
             router.push("/calificaciones");
-        } catch (error) {
+        } catch (error: unknown) {
             console.error("Error al crear calificación:", error);
+            let errorMessage = 'Desconocido';
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+            alert(`Error al crear calificación: ${errorMessage}`);
         } finally {
             setIsSubmitting(false);
         }
     };
+
+    if (estudiantes === undefined || materias === undefined) {
+        return <div className="container mx-auto py-10">Cargando datos...</div>;
+    }
+
+    const formIsValid = 
+        formData.estudianteId && 
+        formData.materiaId && 
+        formData.nota && 
+        !isNaN(parseFloat(formData.nota)) &&
+        parseFloat(formData.nota) >= 0 && 
+        parseFloat(formData.nota) <= 10 &&
+        formData.semestre;
 
     return (
         <div className="container px-4 sm:px-6 lg:px-8 py-10 mx-auto">
@@ -93,30 +113,18 @@ export default function CrearCalificacionPage() {
 
                     <CardContent className="grid grid-cols-1 gap-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="estudianteId">Nombre del Estudiante</Label>
-                            <Input
-                                id="estudianteId"
-                                name="estudianteId"
-                                value={formData.estudianteId as string}
-                                onChange={handleChange}
-                                placeholder="Nombre completo del estudiante"
-                                required
-                            />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="materiaId">Materia</Label>
-                            <Select
-                                value={formData.materiaId as string}
-                                onValueChange={(value) => handleSelectChange("materiaId", value)}
+                            <Label htmlFor="estudianteId">Estudiante</Label>
+                            <Select 
+                                onValueChange={(value) => handleSelectChange("estudianteId", value)}
+                                value={formData.estudianteId}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Selecciona una materia" />
+                                    <SelectValue placeholder="Selecciona el estudiante" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {materias.map((materia) => (
-                                        <SelectItem key={materia._id} value={materia._id}>
-                                            {materia.nombre}
+                                    {estudiantes.map((estudiante) => (
+                                        <SelectItem key={estudiante._id} value={estudiante._id}>
+                                            {estudiante.matricula} - {estudiante.nombre}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -124,35 +132,54 @@ export default function CrearCalificacionPage() {
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="nota">Calificación</Label>
+                            <Label htmlFor="materiaId">Materia</Label>
+                            <Select 
+                                onValueChange={(value) => handleSelectChange("materiaId", value)}
+                                value={formData.materiaId}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona la materia" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {materias.map((materia) => (
+                                        <SelectItem key={materia._id} value={materia._id}>
+                                            {materia.id_m} - {materia.nombre}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="nota">Nota (0-10)</Label>
                             <Input
                                 id="nota"
                                 name="nota"
                                 type="number"
-                                value={formData.nota}
-                                onChange={handleChange}
-                                placeholder="8.5"
+                                step="0.1"
                                 min="0"
                                 max="10"
-                                step="0.1"
-                                required
+                                value={formData.nota}
+                                onChange={handleInputChange}
+                                placeholder="Ej: 8.5"
                             />
                         </div>
 
                         <div className="grid gap-2">
                             <Label htmlFor="semestre">Semestre</Label>
-                            <Select
-                                value={formData.semestre}
+                            <Select 
                                 onValueChange={(value) => handleSelectChange("semestre", value)}
+                                value={formData.semestre}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Selecciona un semestre" />
+                                    <SelectValue placeholder="Selecciona el semestre" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="2023-1">2023-1</SelectItem>
-                                    <SelectItem value="2023-2">2023-2</SelectItem>
-                                    <SelectItem value="2024-1">2024-1</SelectItem>
-                                    <SelectItem value="2024-2">2024-2</SelectItem>
+                                    {semestres.map((semestre) => (
+                                        <SelectItem key={semestre} value={semestre}>
+                                            {semestre}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -170,7 +197,7 @@ export default function CrearCalificacionPage() {
                         </Button>
                         <Button
                             type="submit"
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || !formIsValid}
                             className="w-full sm:w-auto"
                         >
                             {isSubmitting ? "Creando..." : "Crear Calificación"}

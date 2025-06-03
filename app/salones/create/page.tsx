@@ -1,11 +1,9 @@
 "use client";
-
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
     Card,
@@ -15,37 +13,38 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 export default function CrearSalonPage() {
     const router = useRouter();
     const crearSalon = useMutation(api.salon.crearSalon);
-
     const [formData, setFormData] = useState({
-        numero: 0,
+        numero: "",
         edificio: "",
         planta: "",
-        capacidad: 0,
     });
-
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ 
-            ...prev, 
-            [name]: name === "numero" || name === "capacidad" ? Number(value) : value 
-        }));
+    const handleSelectChange = (name: string, value: string) => {
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-
+        
         try {
+            // Convertir numero a number antes de enviar
             await crearSalon({
-                numero: Number(formData.numero),
+                numero: formData.numero,
                 edificio: formData.edificio,
-                planta: formData.planta
+                planta: formData.planta,
             });
             router.push("/salones");
         } catch (error) {
@@ -67,68 +66,70 @@ export default function CrearSalonPage() {
                     </h1>
                 </div>
             </div>
-
+            
             <Card className="w-full max-w-2xl mx-auto">
                 <form onSubmit={handleSubmit}>
                     <CardHeader>
-                        <CardTitle className="font-semibold text-center">Información del Salón</CardTitle>
+                        <CardTitle className="font-semibold text-center">
+                            Información del Salón
+                        </CardTitle>
                     </CardHeader>
-
                     <CardContent className="grid grid-cols-1 gap-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="numero">Número de Salón</Label>
-                            <Input
-                                id="numero"
-                                name="numero"
-                                type="number"
+                            <Label htmlFor="numero">Número del Salón</Label>
+                            <Select 
+                                onValueChange={(value) => handleSelectChange("numero", value)}
                                 value={formData.numero}
-                                onChange={handleChange}
-                                placeholder="101"
-                                min="1"
-                                required
-                            />
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona el número de salón" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {[1, 2, 3, 4, 5, 6, 7].map((num) => (
+                                        <SelectItem key={num} value={num.toString()}>
+                                            {num}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
-
+                        
                         <div className="grid gap-2">
                             <Label htmlFor="edificio">Edificio</Label>
-                            <Input
-                                id="edificio"
-                                name="edificio"
+                            <Select 
+                                onValueChange={(value) => handleSelectChange("edificio", value)}
                                 value={formData.edificio}
-                                onChange={handleChange}
-                                placeholder="Nombre del edificio"
-                                required
-                            />
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona el edificio" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {["A", "B", "C", "D"].map((edificio) => (
+                                        <SelectItem key={edificio} value={edificio}>
+                                            Edificio {edificio}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
-
+                        
                         <div className="grid gap-2">
                             <Label htmlFor="planta">Planta</Label>
-                            <Input
-                                id="planta"
-                                name="planta"
+                            <Select 
+                                onValueChange={(value) => handleSelectChange("planta", value)}
                                 value={formData.planta}
-                                onChange={handleChange}
-                                placeholder="Ej: Planta Baja, 1er Piso"
-                                required
-                            />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="capacidad">Capacidad</Label>
-                            <Input
-                                id="capacidad"
-                                name="capacidad"
-                                type="number"
-                                value={formData.capacidad}
-                                onChange={handleChange}
-                                placeholder="30"
-                                min="1"
-                                max="100"
-                                required
-                            />
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona la planta" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Planta Alta">Planta Alta</SelectItem>
+                                    <SelectItem value="Planta Baja">Planta Baja</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </CardContent>
-
+                    
                     <CardFooter className="flex flex-col sm:flex-row justify-between gap-4 mt-4">
                         <Button
                             type="button"
@@ -141,7 +142,7 @@ export default function CrearSalonPage() {
                         </Button>
                         <Button
                             type="submit"
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || !formData.numero || !formData.edificio || !formData.planta}
                             className="w-full sm:w-auto"
                         >
                             {isSubmitting ? "Creando..." : "Crear Salón"}
