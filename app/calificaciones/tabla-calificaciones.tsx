@@ -202,12 +202,8 @@ export function TablaCalificaciones() {
       flex: 1
     },
     {
-      // headerName: "Semestre",
-      // field: "semestre",
-      // sortable: true,
-      // filter: true,
-      // flex: 1
     },
+    {
     {
       headerName: "Acciones",
       field: "_id",
