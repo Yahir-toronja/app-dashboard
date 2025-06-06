@@ -202,11 +202,11 @@ export function TablaCalificaciones() {
       flex: 1
     },
     {
-      headerName: "Semestre",
-      field: "semestre",
-      sortable: true,
-      filter: true,
-      flex: 1
+      // headerName: "Semestre",
+      // field: "semestre",
+      // sortable: true,
+      // filter: true,
+      // flex: 1
     },
     {
       headerName: "Acciones",
@@ -250,13 +250,7 @@ export function TablaCalificaciones() {
 
       <div className="w-full h-[500px] ag-theme-alpine">
         <AgGridReact
-          rowData={calificaciones}
-          columnDefs={columnDefs}
-          defaultColDef={defaultColDef}
-          pagination={true}
-          paginationPageSize={10}
-          animateRows={true}
-          rowSelection="single"
+         
         />
       </div>
     </div>
