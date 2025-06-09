@@ -250,7 +250,13 @@ export function TablaCalificaciones() {
 
       <div className="w-full h-[500px] ag-theme-alpine">
         <AgGridReact
-         
+          rowData={calificaciones}
+          columnDefs={columnDefs}
+          defaultColDef={defaultColDef}
+          pagination={true}
+          paginationPageSize={10}
+          animateRows={true}
+          rowSelection="single"
         />
       </div>
     </div>
