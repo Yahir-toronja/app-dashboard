@@ -54,7 +54,7 @@ export default function RootLayout({ children }: RootLayoutProps): React.ReactEl
                         {children}
                       </div>
                       <Footer />
-                   
+                    </ConvexClientProvider>
                   </SidebarInset>
                 </div>
               </SidebarProvider>
