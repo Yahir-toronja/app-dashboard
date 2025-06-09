@@ -132,6 +132,11 @@ const AccionesRenderer = (props: ICellRendererParams<Calificacion>) => {
   );
 };
 
+/**
+ * Displays a table of student grades with sorting, filtering, and pagination.
+ *
+ * Fetches grade data from the backend and renders it using AG Grid, providing actions for creating, editing, and deleting grades. Includes conditional cell styling based on grade value and displays loading or error states as appropriate.
+ */
 export function TablaCalificaciones() {
   const router = useRouter();
   const convex = useConvex();

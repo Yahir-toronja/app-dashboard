@@ -26,7 +26,15 @@ type RootLayoutProps = Readonly<{
   children: React.ReactNode;
 }>;
 
-export default function RootLayout({ children }: RootLayoutProps): React.ReactElement {
+/**
+   * Provides the root layout structure and global providers for the Mi Escuela web application.
+   *
+   * Wraps the application in authentication, theming, sidebar, and data providers, and renders the main layout including header, sidebar, content area, and footer.
+   *
+   * @param children - The content to be rendered within the layout.
+   * @returns The complete HTML structure for the application's root layout.
+   */
+  export default function RootLayout({ children }: RootLayoutProps): React.ReactElement {
   return (
     <ClerkProvider
     appearance={{
